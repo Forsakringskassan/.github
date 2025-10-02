@@ -40,7 +40,9 @@ jobs:
         run: |
           npx @forsakringskassan/openapi-node-client-generator-cli \
             --package-name @forsakringskassan/$(echo $GITHUB_REPOSITORY | cut -d '/' -f2) \
-            --package-version $(npx git-changelog-command-line --print-current-version)
+            --package-version $(npx git-changelog-command-line --print-current-version) \
+            --package-url https://github.com/Forsakringskassan/${GITHUB_REPOSITORY}
+
           npm install
 
       - name: Install dependencies
