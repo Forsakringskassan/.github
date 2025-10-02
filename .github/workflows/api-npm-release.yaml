@@ -43,6 +43,8 @@ jobs:
             --package-version $(npx git-changelog-command-line --print-current-version) \
             --package-url https://github.com/Forsakringskassan/${GITHUB_REPOSITORY}
 
+          cat package.json
+
           npm install
 
       - name: Install dependencies
