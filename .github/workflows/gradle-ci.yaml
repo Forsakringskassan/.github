@@ -9,6 +9,7 @@ jobs:
       security-events: write
       actions: read
       contents: read
+      packages: read
     strategy:
       #max-parallel: 3
       fail-fast: false
@@ -19,6 +20,8 @@ jobs:
     name: Java ${{ matrix.Java }} (${{ matrix.os }})
     env:
       skip-automatic-fk-code-standard-apply: true
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
         with:
