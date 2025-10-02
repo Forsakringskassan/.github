@@ -1,0 +1,20 @@
+name: Bundle NPM API Release
+
+on:
+  workflow_call:
+    secrets:
+      NPM_TOKEN:
+        required: true
+
+jobs:
+  call-gradle-release:
+    uses: Forsakringskassan/.github/.github/workflows/gradle-release.yaml@main
+  call-npm-release:
+    needs: call-gradle-release
+    uses: Forsakringskassan/.github/.github/workflows/api-npm-release.yaml@main
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  call-publish-release:
+    needs: call-gradle-release
+    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
+  
