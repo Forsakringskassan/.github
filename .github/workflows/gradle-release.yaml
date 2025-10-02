@@ -25,7 +25,10 @@ jobs:
           distribution: 'temurin'
 
       - name: Publish with Gradle
-        run: ./gradlew updateVersion && ./gradlew release
+        run: |
+          git config --global user.name "Github Actions"
+          git config --global user.email "nobody@fk.se"
+          ./gradlew updateVersion && ./gradlew release
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
