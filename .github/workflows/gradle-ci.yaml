@@ -17,6 +17,8 @@ jobs:
         #os: [ 'ubuntu-latest', 'macos-latest', 'windows-latest' ]
         os: [ 'ubuntu-latest' ]
     name: Java ${{ matrix.Java }} (${{ matrix.os }})
+    env:
+      skip-automatic-fk-code-standard-apply: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -52,7 +54,7 @@ jobs:
       - name: Check formatting
         shell: bash
         run: |
-          skip-automatic-fk-code-standard-apply=true ./gradlew --no-daemon spotlessJavaCheck
+          ./gradlew --no-daemon spotlessJavaCheck
       - name: "Gradle build"
         shell: bash
         run: |
