@@ -1,0 +1,7 @@
+{
+    "name": "Gradle Workflow",
+    "description": "Gradle repos.",
+    "filePatterns": [
+        "gradlew"
+    ]
+}
