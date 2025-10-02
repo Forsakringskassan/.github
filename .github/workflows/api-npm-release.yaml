@@ -33,7 +33,11 @@ jobs:
               run: npm ci
             - name: Build
               run: npm run build
-            - name: Release
+            - name: Authenticate to npm
+              run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+              env:
+                NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+            - name: Publish
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
