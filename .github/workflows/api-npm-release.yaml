@@ -7,7 +7,7 @@ on:
         required: true
   push:
     tags:
-      - "*" # Gradle release pushes a tag → triggers this
+      - "*"
 
 jobs:
   release:
@@ -16,6 +16,17 @@ jobs:
     env:
       HUSKY: 0
     steps:
+      - name: Debug NPM_TOKEN availability
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "❌ NPM_TOKEN is empty or not available"
+            exit 1
+          else
+            echo "✅ NPM_TOKEN is available (length: ${#NPM_TOKEN})"
+          fi
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Checkout
         uses: actions/checkout@v5
         with:
