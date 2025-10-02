@@ -1,0 +1,11 @@
+name: Bundle NPM API Release
+
+on: [workflow_dispatch, workflow_call, push, pull_request]
+
+jobs:
+  call-gradle-release:
+    uses: Forsakringskassan/.github/.github/workflows/gradle-release.yaml@main
+  call-publish-release:
+    needs: call-gradle-release
+    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
+  

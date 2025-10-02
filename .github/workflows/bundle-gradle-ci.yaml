@@ -1,0 +1,8 @@
+name: Bundle NPM API CI
+
+on: [workflow_dispatch, workflow_call, push, pull_request]
+
+jobs:
+  call-gradle-ci:
+    uses: Forsakringskassan/.github/.github/workflows/gradle-ci.yaml@main
+  
