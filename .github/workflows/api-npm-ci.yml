@@ -1,0 +1,32 @@
+name: NPM API CI
+
+on: [workflow_dispatch, workflow_call, push, pull_request]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                node-version: [22.x]
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                fetch-depth: 0
+                tags: true
+            - name: Apply template
+              run: |
+                  npx @forsakringskassan/openapi-node-client-generator-cli \
+                    --package-name $(echo $GITHUB_REPOSITORY | cut -d '/' -f2) \
+                    --package-version $(npx git-changelog-command-line --print-next-version)
+                  npm install
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v5
+              with:
+                  node-version: ${{ matrix.node-version }}
+            - name: Install dependencies
+              run: |
+                  npm ci
+            - name: Build
+              run: npm run build
+            - name: Pack
+              run: npm pack

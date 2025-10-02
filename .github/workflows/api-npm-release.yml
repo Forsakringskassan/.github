@@ -1,0 +1,42 @@
+name: NPM API Release
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    tags:
+      - "*" # Gradle-releasen pushar en tag, som triggar detta
+
+jobs:
+    release:
+        name: Release
+        runs-on: ubuntu-latest
+        env:
+            HUSKY: 0
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+              with:
+                fetch-depth: 0
+                tags: true
+            - name: Apply template
+              run: |
+                  npx @forsakringskassan/openapi-node-client-generator-cli \
+                    --package-name $(echo $GITHUB_REPOSITORY | cut -d '/' -f2) \
+                    --package-version $(npx git-changelog-command-line --print-next-version)
+                  npm install
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 22.x
+            - name: Install dependencies
+              run: npm ci
+            - name: Build
+              run: npm run build
+            - name: Release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  npm config set access public
+                  npm exec semantic-release
