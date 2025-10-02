@@ -16,7 +16,7 @@ jobs:
             - name: Apply template
               run: |
                   npx @forsakringskassan/openapi-node-client-generator-cli \
-                    --package-name $(echo $GITHUB_REPOSITORY | cut -d '/' -f2) \
+                    --package-name @forsakringskassan/$(echo $GITHUB_REPOSITORY | cut -d '/' -f2) \
                     --package-version $(npx git-changelog-command-line --print-next-version)
                   npm install
             - name: Use Node.js ${{ matrix.node-version }}
