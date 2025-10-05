@@ -21,8 +21,8 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: '25'
+          distribution: 'zulu'
 
       - name: Publish with Gradle
         run: |
