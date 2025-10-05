@@ -45,7 +45,7 @@ jobs:
           git remote add origin git@github.com:${GITHUB_REPOSITORY}.git
           git remote -v
       - name: Setup java
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: ${{ matrix.java }}
