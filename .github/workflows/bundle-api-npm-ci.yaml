@@ -1,6 +1,6 @@
 name: Bundle API CI
 
-on: [workflow_dispatch, workflow_call, push, pull_request]
+on: [workflow_call]
 
 jobs:
   call-api-npm-ci:

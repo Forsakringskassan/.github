@@ -1,6 +1,6 @@
 name: Git Changelog Github Release
 
-on: [workflow_dispatch, workflow_call, push]
+on: [workflow_call]
 
 jobs:
   build:

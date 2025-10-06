@@ -1,6 +1,6 @@
 name: Bundle Gradle CI
 
-on: [workflow_dispatch, workflow_call, push, pull_request]
+on: [workflow_call]
 
 jobs:
   call-gradle-ci:
