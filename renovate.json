@@ -1,12 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base"
+    "config:recommended"
   ],
-  "enabledManagers": ["github-actions"],
+  "enabledManagers": [
+    "github-actions"
+  ],
   "github-actions": {
-    "fileMatch": [
-      ".github/workflows/.*\\.ya?ml$"
+    "managerFilePatterns": [
+      "/.github/workflows/.*\\.ya?ml$/"
     ]
   }
 }
