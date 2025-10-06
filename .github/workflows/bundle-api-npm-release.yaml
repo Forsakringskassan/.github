@@ -17,4 +17,3 @@ jobs:
   call-publish-release:
     needs: call-gradle-release
     uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
-  

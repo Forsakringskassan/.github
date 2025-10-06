@@ -5,4 +5,3 @@ on: [workflow_call]
 jobs:
   call-npm-ci:
     uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
-  

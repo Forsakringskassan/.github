@@ -7,4 +7,3 @@ jobs:
     uses: Forsakringskassan/.github/.github/workflows/api-npm-ci.yaml@main
   call-gradle-ci:
     uses: Forsakringskassan/.github/.github/workflows/gradle-ci.yaml@main
-  

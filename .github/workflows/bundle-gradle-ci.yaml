@@ -5,4 +5,3 @@ on: [workflow_call]
 jobs:
   call-gradle-ci:
     uses: Forsakringskassan/.github/.github/workflows/gradle-ci.yaml@main
-  

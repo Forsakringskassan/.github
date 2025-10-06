@@ -1,0 +1,45 @@
+name: Lint Workflows
+on:
+  pull_request:
+  push:
+
+jobs:
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install yamllint
+        run: sudo apt-get update && sudo apt-get install -y yamllint
+
+      - name: Create yamllint config
+        run: |
+          cat <<EOF > .yamllint.yml
+          extends: default
+          rules:
+            line-length:
+              max: 80
+              level: warning
+              allow-non-breakable-inline-mappings: true
+            indentation:
+              spaces: 2
+              indent-sequences: true
+            trailing-spaces: disable
+            document-start:
+              present: true
+            comments:
+              min-spaces-from-content: 2
+          EOF
+
+      - name: Lint YAML workflows
+        run: |
+          echo "Searching for YAML files..."
+          files=$(find .github/workflows -type f \( -name "*.yml" -o -name "*.yaml" \))
+          if [ -z "$files" ]; then
+            echo "No YAML files found."
+            exit 0
+          fi
+          echo "Found files:"
+          echo "$files"
+          yamllint -c .yamllint.yml $files
