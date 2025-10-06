@@ -1,4 +1,4 @@
-name: Bundle NPM API Release
+name: Bundle API Release
 
 on:
   workflow_call:

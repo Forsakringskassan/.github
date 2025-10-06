@@ -1,0 +1,8 @@
+name: Bundle NPM CI
+
+on: [workflow_dispatch, workflow_call, push, pull_request]
+
+jobs:
+  call-npm-ci:
+    uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
+  

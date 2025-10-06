@@ -1,4 +1,4 @@
-name: Bundle NPM API CI
+name: Bundle Gradle CI
 
 on: [workflow_dispatch, workflow_call, push, pull_request]
 

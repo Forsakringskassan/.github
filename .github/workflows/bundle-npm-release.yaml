@@ -1,0 +1,13 @@
+name: Bundle NPM Release
+
+on:
+  workflow_call:
+    secrets:
+      NPM_TOKEN:
+        required: true
+
+jobs:
+  call-npm-release:
+    uses: Forsakringskassan/.github/.github/workflows/npm-release.yaml@main
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

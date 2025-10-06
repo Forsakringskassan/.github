@@ -1,4 +1,4 @@
-name: Bundle NPM API Release
+name: Bundle Gradle Release
 
 on: [workflow_dispatch, workflow_call, push, pull_request]
 
