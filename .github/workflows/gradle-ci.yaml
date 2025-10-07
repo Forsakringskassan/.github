@@ -72,7 +72,7 @@ jobs:
           -v "CHECKSTYLE" "." ".*build/reports/checkstyle/main\.xml$" "Checkstyle" \
           -v "PMD" "." ".*build/reports/pmd/main\.xml$" "PMD" \
           -v "JUNIT" "." ".*/build/test-results/test/TEST-.*\.xml$" "JUNIT"
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         if: ${{ (success() || failure()) }}
         with:
           sarif_file: sarif-report.json
