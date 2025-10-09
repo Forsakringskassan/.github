@@ -1,0 +1,10 @@
+name: Bundle Maven Release
+
+on: [workflow_call]
+
+jobs:
+  call-maven-ci:
+    uses: Forsakringskassan/.github/.github/workflows/maven-release.yaml@main
+  call-publish-release:
+    needs: call-maven-ci
+    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main

@@ -1,0 +1,49 @@
+name: Maven Release
+
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-tags: "true"
+          fetch-depth: "0"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "zulu"
+
+      - name: Git User
+        run: |
+          git config --global user.name "Github Actions"
+          git config --global user.email "nobody@fk.se"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Set version
+        run: |
+          ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:semantic-version
+          git commit -a -m "chore: setting version in pom"
+
+      - name: Publish with Maven
+        run: |
+          ./mvnw -s settings.xml release:prepare release:perform -B
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Update changelog
+        run: |
+          ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:git-changelog
+          git commit -a -m "chore: updating changelog"
+          git push
