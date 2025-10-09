@@ -42,8 +42,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+
       - name: Update changelog
         run: |
-          ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:2.2.11:git-changelog -DignoreCommitsIfMessageMatches=".*maven-release-plugin.*"
+          highestTag=$(npx git-changelog-command-line \
+            --print-highest-version-tag)
+          echo Last release detected as $highestTag
+
+          npx git-changelog-command-line \
+            --ignore-pattern ".*maven-release-plugin.*" \
+            --from-ref $highestTag \
+            --to-ref HEAD \
+            --prepend-to-file CHANGELOG.md
+
           git commit -a -m "chore: updating changelog"
           git push
