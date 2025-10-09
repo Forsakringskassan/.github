@@ -31,7 +31,7 @@ jobs:
 
       - name: Set version
         run: |
-          ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:semantic-version
+          ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:2.2.5:semantic-version
           git commit -a -m "chore: setting version in pom"
 
       - name: Publish with Maven
@@ -44,6 +44,6 @@ jobs:
 
       - name: Update changelog
         run: |
-          ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:git-changelog
+          ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:2.2.5:git-changelog -DignoreCommitsIfMessageMatches=".*maven-release-plugin.*"
           git commit -a -m "chore: updating changelog"
           git push
