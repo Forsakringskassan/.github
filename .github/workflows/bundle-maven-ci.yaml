@@ -1,0 +1,7 @@
+name: Bundle Maven CI
+
+on: [workflow_call]
+
+jobs:
+  call-maven-ci:
+    uses: Forsakringskassan/.github/.github/workflows/maven-ci.yaml@main
