@@ -55,10 +55,8 @@ jobs:
 
           npx git-changelog-command-line \
             --ignore-pattern ".*maven-release-plugin.*" \
-            --from-ref $highestTag \
-            --to-ref HEAD \
-            --prepend-to-file CHANGELOG.md
+            -of CHANGELOG.md
 
           git add CHANGELOG.md
-          git commit -a -m "chore: updating changelog"
+          git commit -a -m "chore: updating changelog" || echo "No changes to commit"
           git push
