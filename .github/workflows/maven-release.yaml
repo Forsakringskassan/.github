@@ -32,7 +32,7 @@ jobs:
       - name: Set version
         run: |
           ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:2.2.5:semantic-version
-          git commit -a -m "chore: setting version in pom"
+          git commit -a -m "chore: setting version in pom" || echo "No changes to commit"
 
       - name: Publish with Maven
         run: |
