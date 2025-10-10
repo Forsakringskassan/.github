@@ -34,9 +34,33 @@ jobs:
           ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:2.2.11:semantic-version
           git commit -a -m "chore: setting version in pom" || echo "No changes to commit"
 
+      - name: Create Maven settings.xml
+        run: |
+          mkdir -p "$RUNNER_TEMP/maven"
+          cat <<'EOF' > "$RUNNER_TEMP/maven/settings.xml"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+                                        http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github--Forsakringskassan--fk-code-standard-java</id>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
+              </server>
+              <server>
+                <id>github--Forsakringskassan--repository</id>
+                <username>${env.PACKAGES_RW_ACTOR}</username>
+                <password>${env.PACKAGES_RW_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
       - name: Publish with Maven
         run: |
-          ./mvnw -s settings.xml release:prepare release:perform -B
+          ./mvnw -s "$RUNNER_TEMP/maven/settings.xml" release:prepare release:perform -B
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
