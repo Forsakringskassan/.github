@@ -32,6 +32,8 @@ jobs:
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
 
       - name: Apply template
         run: |
