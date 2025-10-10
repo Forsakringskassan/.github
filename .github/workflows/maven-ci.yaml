@@ -30,18 +30,30 @@ jobs:
         with:
           distribution: "zulu"
           java-version: ${{ matrix.java }}
+      - name: Create Maven settings.xml
+        run: |
+          mkdir -p "$RUNNER_TEMP/maven"
+          cat <<'EOF' > "$RUNNER_TEMP/maven/settings.xml"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+                                        http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github--Forsakringskassan--repository</id>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
       - name: "Maven build"
         shell: bash
         run: |
           java -version
           javac -version
-          if [ -f "settings.xml" ]; then
-              echo "Found settings.xml — running './mvnw -s settings.xml verify'"
-              ./mvnw -s settings.xml verify
-          else
-              echo "No settings.xml found — running './mvnw verify'"
-              ./mvnw verify
-          fi
+          ./mvnw verify
 
       - name: Publish Build
         uses: actions/upload-artifact@v4
