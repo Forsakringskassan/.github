@@ -65,6 +65,20 @@ jobs:
           PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
           PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
+      - name: Transorm static code analysis to SARIF
+        if: ${{ (success() || failure()) }}
+        run: |
+          npx violations-command-line -sarif sarif-report.json \
+          -v "FINDBUGS" "." ".*/findbugs.*\.xml$" "Findbugs" \
+          -v "FINDBUGS" "." ".*/spotbugsXml.*\.xml$" "Spotbugs" \
+          -v "CHECKSTYLE" "." ".*/checkstyle.*\.xml$" "Checkstyle" \
+          -v "PMD" "." ".*/pmd.*\.xml$" "PMD"
+      - uses: github/codeql-action/upload-sarif@v4
+        if: ${{ (success() || failure()) }}
+        with:
+          sarif_file: sarif-report.json
+          category: violations-lib
+
       - name: Publish Build
         uses: actions/upload-artifact@v4
         if: failure()
