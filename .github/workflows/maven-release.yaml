@@ -37,8 +37,10 @@ jobs:
 
       - name: Set version
         run: |
-          ./mvnw -q se.bjurr.gitchangelog:git-changelog-maven-plugin:2.2.11:semantic-version
-          git commit -a -m "chore: setting version in pom" || echo "No changes to commit"
+          nextVersion=$(npx git-changelog-command-line \
+            --print-next-version)
+          mvn -q versions:set -DnewVersion=${nextVersion}-SNAPSHOT -DprocessAllModules=true
+          git commit -a -m "chore: setting ${nextVersion} version in pom" || echo "No changes to commit"
 
       - name: Debug token env
         run: |
