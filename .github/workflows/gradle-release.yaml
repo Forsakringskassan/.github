@@ -2,6 +2,11 @@ name: Gradle Release
 
 on:
   workflow_call:
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
 
 jobs:
   publish:
@@ -32,3 +37,5 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
