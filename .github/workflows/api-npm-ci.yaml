@@ -14,21 +14,28 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node-version }}
+      
+      # Special cache here because there is no package-lock.json
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Apply template
         run: |
           npx @forsakringskassan/openapi-node-client-generator-cli \
             --package-name @forsakringskassan/$(echo $GITHUB_REPOSITORY | cut -d '/' -f2) \
             --package-version $(npx git-changelog-command-line --print-next-version) \
             --package-url https://github.com/Forsakringskassan/${GITHUB_REPOSITORY}
-            
-          npm install
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v5
-        with:
-          node-version: ${{ matrix.node-version }}
       - name: Install dependencies
-        run: |
-          npm ci
+        run: npm install
       - name: Build
         run: npm run build
       - name: Pack
