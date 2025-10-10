@@ -1,7 +1,16 @@
 name: Bundle Maven CI
 
-on: [workflow_call]
+on:
+  workflow_call:
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
 
 jobs:
   call-maven-ci:
     uses: Forsakringskassan/.github/.github/workflows/maven-ci.yaml@main
+    secrets:
+      PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+      PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
