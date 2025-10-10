@@ -1,7 +1,13 @@
 name: Maven Release
 
+
 on:
   workflow_call:
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
 
 jobs:
   publish:
@@ -31,8 +37,16 @@ jobs:
 
       - name: Set version
         run: |
-          ./mvnw se.bjurr.gitchangelog:git-changelog-maven-plugin:2.2.11:semantic-version
+          ./mvnw -q se.bjurr.gitchangelog:git-changelog-maven-plugin:2.2.11:semantic-version
           git commit -a -m "chore: setting version in pom" || echo "No changes to commit"
+
+      - name: Debug token env
+        run: |
+          echo "Actor: $PACKAGES_RW_ACTOR"
+          echo "Token length: ${#PACKAGES_RW_TOKEN}"
+        env:
+          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Create Maven settings.xml
         run: |
@@ -65,6 +79,8 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
