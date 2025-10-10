@@ -28,6 +28,7 @@ jobs:
         with:
           java-version: "25"
           distribution: "zulu"
+          cache: 'maven'
 
       - name: Git User
         run: |
@@ -71,7 +72,7 @@ jobs:
 
       - name: Publish with Maven
         run: |
-          ./mvnw -s "$RUNNER_TEMP/maven/settings.xml" release:prepare release:perform -B
+          ./mvnw -T 1C -s "$RUNNER_TEMP/maven/settings.xml" release:prepare release:perform -B
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

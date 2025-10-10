@@ -36,6 +36,7 @@ jobs:
         with:
           distribution: "zulu"
           java-version: ${{ matrix.java }}
+          cache: 'maven'
       - name: Create Maven settings.xml
         run: |
           mkdir -p "$RUNNER_TEMP/maven"
@@ -59,7 +60,7 @@ jobs:
         run: |
           java -version
           javac -version
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml verify
+          ./mvnw -T 1C -s $RUNNER_TEMP/maven/settings.xml verify
         env:
           PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
           PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
