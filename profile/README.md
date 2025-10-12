@@ -3,7 +3,8 @@
 This is a quick overview of how we build software.
 
 - Frontend
-  - [designsystem](https://github.com/Forsakringskassan/designsystem) - Försäkringskassans Designsystem. Publishing to [NPMJS](https://www.npmjs.com/org/forsakringskassan).
+  - [designsystem](https://github.com/Forsakringskassan/designsystem) - Försäkringskassans Designsystem.
+    - Publishing to [NPMJS](https://www.npmjs.com/org/forsakringskassan).
   - [designsystem-user-app](https://github.com/Forsakringskassan/designsystem-user-app) - Example frontend application using [designsystem](https://github.com/Forsakringskassan/designsystem).
     - Integrates with [template-quarkus](https://github.com/Forsakringskassan/template-quarkus) using client from [template-api](https://github.com/Forsakringskassan/template-api) via [NPMJS](https://www.npmjs.com/org/forsakringskassan).
   - [designsystem-user-lib](https://github.com/Forsakringskassan/designsystem-user-lib) - Example NPM library using our toolchain via [NPMJS](https://www.npmjs.com/org/forsakringskassan).
