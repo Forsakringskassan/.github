@@ -13,6 +13,7 @@ jobs:
     uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
   call-app-npm-docker:
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    needs: call-npm-ci
     uses: Forsakringskassan/.github/.github/workflows/app-npm-docker.yaml@main
     with:
       release: false
@@ -20,5 +21,6 @@ jobs:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
   call-npm-githubpages:
+    needs: call-app-npm-docker
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     uses: Forsakringskassan/.github/.github/workflows/npm-githubpages.yaml@main

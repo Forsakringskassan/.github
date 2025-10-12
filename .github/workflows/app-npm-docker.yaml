@@ -31,9 +31,9 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: npm
 
-      - name: Install dependencies (cached)
+      - name: Install dependencies
         run: npm ci
 
       - name: Get and sanitize package name
@@ -52,6 +52,24 @@ jobs:
           echo "nextVersion=$nextVersion" >> $GITHUB_OUTPUT
           echo "📄 Next version: $nextVersion"
 
+      - name: Update package.json version
+        if: ${{ inputs.release }}
+        run: |
+          VERSION="${{ steps.version.outputs.nextVersion }}"
+          echo "📄 Updating package.json to version $VERSION"
+          npm version "$VERSION" --no-git-tag-version
+
+      - name: Commit version bump
+        if: ${{ inputs.release }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.nextVersion }}"
+          git push origin HEAD
+
       - name: Build project
         run: npm run build
 
@@ -59,6 +77,7 @@ jobs:
         run: |
           mkdir docker
           cp -r dist docker/
+          # Create Dockerfile that prints image name, version, and commit hash
           cat > docker/Dockerfile <<'EOF'
           FROM httpd:latest
 
@@ -68,32 +87,38 @@ jobs:
           # Copy built app
           COPY dist/ /usr/local/apache2/htdocs/
 
-          # Disable directory listing and caching
-          RUN echo '\
-          LoadModule headers_module modules/mod_headers.so\n\
-          <Directory "/usr/local/apache2/htdocs">\
-              Options -Indexes\
-              AllowOverride None\
-              Require all granted\
-          </Directory>\
-          \
-          <Location "/">\
-              Header always set Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"\
-              Header always set Pragma "no-cache"\
-              Header always set Expires "0"\
-          </Location>\
-          ErrorDocument 403 "Access forbidden"\
-          ' > /usr/local/apache2/conf/extra/no-cache.conf \
-          && echo "Include conf/extra/no-cache.conf" >> /usr/local/apache2/conf/httpd.conf
+          # Pass version info and image name as build args
+          ARG NEXT_VERSION
+          ARG GIT_COMMIT
+          ARG IMAGE_NAME
+          ENV NEXT_VERSION=$NEXT_VERSION
+          ENV GIT_COMMIT=$GIT_COMMIT
+          ENV IMAGE_NAME=$IMAGE_NAME
+
+          # Print info on container start
+          CMD echo "Starting container: $IMAGE_NAME, version $NEXT_VERSION, commit $GIT_COMMIT" && httpd-foreground
           EOF
 
       - name: Build Docker image
         run: |
-          IMAGE_BASE="${{ inputs.registry }}/${{ github.repository_owner }}/${{ steps.pkg.outputs.name }}"
+          IMAGE_BASE="${{ inputs.registry }}/Forsakringskassan/repository"
+          GIT_COMMIT=$(git rev-parse HEAD)
+          NEXT_VERSION="${{ steps.version.outputs.nextVersion }}"
           if [ "${{ inputs.release }}" = "true" ]; then
-            docker build -t "$IMAGE_BASE:latest" -t "$IMAGE_BASE:${{ steps.version.outputs.nextVersion }}" docker
+            docker build \
+              --build-arg NEXT_VERSION=$NEXT_VERSION \
+              --build-arg GIT_COMMIT=$GIT_COMMIT \
+              --build-arg IMAGE_NAME=$IMAGE_BASE \
+              -t "$IMAGE_BASE:latest" \
+              -t "$IMAGE_BASE:$NEXT_VERSION" \
+              docker
           else
-            docker build -t "$IMAGE_BASE:snapshot" docker
+            docker build \
+              --build-arg NEXT_VERSION=snapshot \
+              --build-arg GIT_COMMIT=$GIT_COMMIT \
+              --build-arg IMAGE_NAME=$IMAGE_BASE:snapshot \
+              -t "$IMAGE_BASE:snapshot" \
+              docker
           fi
           echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
 
@@ -115,6 +140,7 @@ jobs:
           GIT_AUTHOR_EMAIL: github-actions@github.com
           GIT_COMMITTER_NAME: github-actions
           GIT_COMMITTER_EMAIL: github-actions@github.com
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.nextVersion }}"
           git tag -a "v$VERSION" -m "Release v$VERSION"
