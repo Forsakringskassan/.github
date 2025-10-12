@@ -1,0 +1,121 @@
+name: Build app into Docker image
+
+on:
+  workflow_call:
+    inputs:
+      registry:
+        required: false
+        type: string
+        default: ghcr.io
+      release:
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (cached)
+        run: npm ci
+
+      - name: Get and sanitize package name
+        id: pkg
+        run: |
+          RAW_NAME=$(node -p "require('./package.json').name")
+          CLEAN_NAME=$(echo "$RAW_NAME" | tr -d '@' | tr '/' '-' | tr '/' '--')
+          echo "name=$CLEAN_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Package name: $RAW_NAME -> $CLEAN_NAME"
+
+      - name: Determine next version (only if release)
+        id: version
+        if: ${{ inputs.release }}
+        run: |
+          nextVersion=$(npx git-changelog-command-line --print-next-version)
+          echo "nextVersion=$nextVersion" >> $GITHUB_OUTPUT
+          echo "📄 Next version: $nextVersion"
+
+      - name: Build project
+        run: npm run build
+
+      - name: Prepare Docker context
+        run: |
+          mkdir docker
+          cp -r dist docker/
+          cat > docker/Dockerfile <<'EOF'
+          FROM httpd:latest
+
+          # Clean web root
+          RUN rm -rf /usr/local/apache2/htdocs/*
+
+          # Copy built app
+          COPY dist/ /usr/local/apache2/htdocs/
+
+          # Disable directory listing and caching
+          RUN echo '\
+          LoadModule headers_module modules/mod_headers.so\n\
+          <Directory "/usr/local/apache2/htdocs">\
+              Options -Indexes\
+              AllowOverride None\
+              Require all granted\
+          </Directory>\
+          \
+          <Location "/">\
+              Header always set Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"\
+              Header always set Pragma "no-cache"\
+              Header always set Expires "0"\
+          </Location>\
+          ErrorDocument 403 "Access forbidden"\
+          ' > /usr/local/apache2/conf/extra/no-cache.conf \
+          && echo "Include conf/extra/no-cache.conf" >> /usr/local/apache2/conf/httpd.conf
+          EOF
+
+      - name: Build Docker image
+        run: |
+          IMAGE_BASE="${{ inputs.registry }}/${{ github.repository_owner }}/${{ steps.pkg.outputs.name }}"
+          if [ "${{ inputs.release }}" = "true" ]; then
+            docker build -t "$IMAGE_BASE:latest" -t "$IMAGE_BASE:${{ steps.version.outputs.nextVersion }}" docker
+          else
+            docker build -t "$IMAGE_BASE:snapshot" docker
+          fi
+          echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
+
+      - name: Log in to registry
+        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
+
+      - name: Push Docker image(s)
+        run: |
+          if [ "${{ inputs.release }}" = "true" ]; then
+            docker push "$IMAGE_BASE:latest"
+            docker push "$IMAGE_BASE:${{ steps.version.outputs.nextVersion }}"
+          fi
+          docker push "$IMAGE_BASE:snapshot"
+
+      - name: Push git tag for version
+        if: ${{ inputs.release }}
+        env:
+          GIT_AUTHOR_NAME: github-actions
+          GIT_AUTHOR_EMAIL: github-actions@github.com
+          GIT_COMMITTER_NAME: github-actions
+          GIT_COMMITTER_EMAIL: github-actions@github.com
+        run: |
+          VERSION="${{ steps.version.outputs.nextVersion }}"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"

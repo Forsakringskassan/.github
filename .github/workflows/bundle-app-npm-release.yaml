@@ -1,0 +1,20 @@
+name: Bundle App NPM Release
+
+on:
+  workflow_call:
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
+
+jobs:
+  call-app-npm-docker:
+    uses: Forsakringskassan/.github/.github/workflows/app-npm-docker.yaml@main
+    with:
+      release: true
+    secrets:
+      PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+      PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+  call-npm-githubpages:
+    uses: Forsakringskassan/.github/.github/workflows/npm-githubpages.yaml@main
