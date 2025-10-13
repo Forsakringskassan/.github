@@ -101,7 +101,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          IMAGE_BASE="${{ inputs.registry }}/Forsakringskassan/repository"
+          IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/repository"
           GIT_COMMIT=$(git rev-parse HEAD)
           NEXT_VERSION="${{ steps.version.outputs.nextVersion }}"
           if [ "${{ inputs.release }}" = "true" ]; then
