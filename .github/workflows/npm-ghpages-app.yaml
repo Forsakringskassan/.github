@@ -1,4 +1,4 @@
-name: Reusable Deploy to GitHub Pages
+name: NPM GH-Pages App
 
 on:
   workflow_call:
@@ -27,6 +27,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22.x
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci

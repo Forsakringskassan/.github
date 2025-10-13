@@ -11,3 +11,9 @@ jobs:
     uses: Forsakringskassan/.github/.github/workflows/npm-release.yaml@main
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  call-npm-component-test:
+    uses: Forsakringskassan/.github/.github/workflows/npm-component-test.yaml@main
+  call-npm-ghpages-docs:
+    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-docs.yaml@main
+  call-npm-lint:
+    uses: Forsakringskassan/.github/.github/workflows/npm-lint.yaml@main
