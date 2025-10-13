@@ -1,0 +1,52 @@
+name: NPM PR Preview
+
+on: [workflow_call]
+
+concurrency: preview-${{ github.ref }}
+
+jobs:
+  should-run:
+    runs-on: ubuntu-latest
+    outputs:
+      run_job: ${{ steps.check.outputs.run_job }}
+    steps:
+      - name: Check if workflow should run
+        id: check
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "event_action=${{ github.event.action }}"
+
+          if [[ "${{ github.event_name }}" == "pull_request" && \
+                ( "${{ github.event.action }}" == "opened" || \
+                  "${{ github.event.action }}" == "reopened" || \
+                  "${{ github.event.action }}" == "synchronize" || \
+                  "${{ github.event.action }}" == "closed" ) ]]; then
+            echo "run_job=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_job=false" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-preview:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.run_job == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20.x
+          cache: "npm"
+      - name: Install and build
+        if: github.event.action != 'closed'
+        run: |
+          npm ci
+          npm run build
+          npm run build:docs
+      - uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: ./public/
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: auto

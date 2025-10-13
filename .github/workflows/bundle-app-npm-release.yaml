@@ -16,5 +16,5 @@ jobs:
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-  call-npm-githubpages:
-    uses: Forsakringskassan/.github/.github/workflows/npm-githubpages.yaml@main
+  call-npm-ghpages-app:
+    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
