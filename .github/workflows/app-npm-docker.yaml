@@ -109,17 +109,18 @@ jobs:
               --build-arg NEXT_VERSION=$NEXT_VERSION \
               --build-arg GIT_COMMIT=$GIT_COMMIT \
               --build-arg IMAGE_NAME=$IMAGE_BASE \
+              --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
               -t "$IMAGE_BASE:latest" \
               -t "$IMAGE_BASE:$NEXT_VERSION" \
               docker
-          else
-            docker build \
-              --build-arg NEXT_VERSION=snapshot \
-              --build-arg GIT_COMMIT=$GIT_COMMIT \
-              --build-arg IMAGE_NAME=$IMAGE_BASE:snapshot \
-              -t "$IMAGE_BASE:snapshot" \
-              docker
           fi
+          docker build \
+            --build-arg NEXT_VERSION=snapshot \
+            --build-arg GIT_COMMIT=$GIT_COMMIT \
+            --build-arg IMAGE_NAME=$IMAGE_BASE:snapshot \
+            --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+            -t "$IMAGE_BASE:snapshot" \
+            docker
           echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
 
       - name: Log in to registry
