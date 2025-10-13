@@ -25,6 +25,10 @@ This is a quick overview of how we build software.
     - Using [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) via [repository](https://github.com/Forsakringskassan/repository).
   - [template-jar-api-generate](https://github.com/Forsakringskassan/template-jar-api-generate) - Example showing how to generate code from OpenAPI that is fetched from [repository](https://github.com/Forsakringskassan/repository).
     - Using [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) via [repository](https://github.com/Forsakringskassan/repository).
+- Deployment
+  - [template-kubernetes](https://github.com/Forsakringskassan/template-kubernetes) - Very simplified deployment.
+    - Using image from [designsystem](https://github.com/Forsakringskassan/designsystem).
+    - Using image from [template-quarkus](https://github.com/Forsakringskassan/template-quarkus).
 
 
 ```mermaid
@@ -61,8 +65,14 @@ graph TD
 
     %% Repository subgraph
     subgraph Package_Repositories
-        GHRepo[GitHub]
+        GHRepo[GitHub Container Registry]
         NPM[NPMJS]
+    end
+
+    %% Kubernetes deployment
+    subgraph Kubernetes_Deployment
+        K2[frontend]
+        K3[backend]
     end
 
     %% Cross-subgraph links
@@ -78,4 +88,8 @@ graph TD
     A1 -->|Publishing NPM| NPM
     A2 -->|Publishing Docker| GHRepo
     A3 -->|Publishing NPM| NPM
+
+    %% Docker to Kubernetes deployment flows
+    GHRepo -->|Image| K2
+    GHRepo -->|Image| K3
 ```
