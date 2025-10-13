@@ -91,24 +91,28 @@ jobs:
           ARG NEXT_VERSION
           ARG GIT_COMMIT
           ARG IMAGE_NAME
+          ARG BUILD_DATE
           ENV NEXT_VERSION=$NEXT_VERSION
           ENV GIT_COMMIT=$GIT_COMMIT
           ENV IMAGE_NAME=$IMAGE_NAME
+          ENV BUILD_DATE=$BUILD_DATE
 
           # Print info on container start
-          CMD echo "Starting container: $IMAGE_NAME, version $NEXT_VERSION, commit $GIT_COMMIT" && httpd-foreground
+          CMD echo "Starting container: $IMAGE_NAME" && echo "Version: $NEXT_VERSION" && echo "Commit: $GIT_COMMIT" && echo "Build date: $BUILD_DATE" && echo "" && echo "" && httpd-foreground
           EOF
 
       - name: Build Docker image
         run: |
           IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.pkg.outputs.name }}"
           GIT_COMMIT=$(git rev-parse HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           NEXT_VERSION="${{ steps.version.outputs.nextVersion }}"
           if [ "${{ inputs.release }}" = "true" ]; then
             docker build \
               --build-arg NEXT_VERSION=$NEXT_VERSION \
               --build-arg GIT_COMMIT=$GIT_COMMIT \
               --build-arg IMAGE_NAME=$IMAGE_BASE \
+              --build-arg BUILD_DATE="$BUILD_DATE" \
               --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
               -t "$IMAGE_BASE:latest" \
               -t "$IMAGE_BASE:$NEXT_VERSION" \
@@ -118,6 +122,7 @@ jobs:
             --build-arg NEXT_VERSION=snapshot \
             --build-arg GIT_COMMIT=$GIT_COMMIT \
             --build-arg IMAGE_NAME=$IMAGE_BASE:snapshot \
+            --build-arg BUILD_DATE="$BUILD_DATE" \
             --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
             -t "$IMAGE_BASE:snapshot" \
             docker
