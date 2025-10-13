@@ -27,7 +27,7 @@ This is a quick overview of how we build software.
     - Using [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) via [repository](https://github.com/Forsakringskassan/repository).
 - Deployment
   - [template-kubernetes](https://github.com/Forsakringskassan/template-kubernetes) - Very simplified deployment.
-    - Using image from [designsystem](https://github.com/Forsakringskassan/designsystem).
+    - Using image from [designsystem-user-app](https://github.com/Forsakringskassan/designsystem-user-app).
     - Using image from [template-quarkus](https://github.com/Forsakringskassan/template-quarkus).
 
 
