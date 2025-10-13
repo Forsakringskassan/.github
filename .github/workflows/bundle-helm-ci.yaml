@@ -1,0 +1,22 @@
+name: Bundle Helm CI
+
+on:
+  workflow_call:
+    inputs:
+      helm-version:
+        description: 'Helm version to use'
+        required: false
+        type: string
+        default: '3.13.0'
+      chart-path:
+        description: 'Path to the Helm chart directory'
+        required: false
+        type: string
+        default: 'helm-chart'
+
+jobs:
+  call-helm-ci:
+    uses: Forsakringskassan/.github/.github/workflows/helm-ci.yaml@main
+    with:
+      helm-version: ${{ inputs.helm-version }}
+      chart-path: ${{ inputs.chart-path }}
