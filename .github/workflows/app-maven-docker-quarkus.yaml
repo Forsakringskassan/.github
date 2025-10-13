@@ -1,0 +1,149 @@
+name: Build Java Maven app into Docker image
+
+on:
+  workflow_call:
+    inputs:
+      registry:
+        required: false
+        type: string
+        default: ghcr.io
+      release:
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: 25
+          distribution: "temurin"
+          cache: maven
+          server-id: github--Forsakringskassan--repository
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_TOKEN
+
+      - name: Check if Quarkus project
+        id: quarkus-check
+        run: |
+          if ./mvnw help:effective-pom | grep -q "io.quarkus"; then
+            echo "is-quarkus=true" >> $GITHUB_OUTPUT
+            echo "✅ This is a Quarkus project"
+          else
+            echo "is-quarkus=false" >> $GITHUB_OUTPUT
+            echo "❌ This is not a Quarkus project, skipping workflow"
+          fi
+
+      - name: Get artifact info
+        if: steps.quarkus-check.outputs.is-quarkus == 'true'
+        id: artifact
+        run: |
+          ARTIFACT_ID=$(./mvnw help:evaluate -Dexpression=project.artifactId -q -DforceStdout)
+          ARTIFACT_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "name=$ARTIFACT_ID" >> $GITHUB_OUTPUT
+          echo "version=$ARTIFACT_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Artifact ID: $ARTIFACT_ID, Version: $ARTIFACT_VERSION"
+
+      - name: Build project
+        if: steps.quarkus-check.outputs.is-quarkus == 'true'
+        env:
+          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+        run: ./mvnw clean package -DskipTests
+
+      - name: Prepare Docker context
+        if: steps.quarkus-check.outputs.is-quarkus == 'true'
+        run: |
+          mkdir docker
+          # Find the quarkus app directory (could be named differently)
+          QUARKUS_APP_DIR=$(find target -name "*-app" -type d | head -1)
+          if [ -z "$QUARKUS_APP_DIR" ]; then
+            echo "No Quarkus app directory found in target/"
+            exit 1
+          fi
+          echo "Found Quarkus app: $QUARKUS_APP_DIR"
+          cp "$QUARKUS_APP_DIR" docker/app -r
+          # Create Dockerfile for Quarkus app
+          cat > docker/Dockerfile <<'EOF'
+          FROM eclipse-temurin:25-jre
+
+          ENV LANGUAGE='en_US:en'
+
+          # Copy the Quarkus app
+          COPY app/lib/ /deployments/lib/
+          COPY app/*.jar /deployments/
+          COPY app/app/ /deployments/app/
+          COPY app/quarkus/ /deployments/quarkus/
+
+          # Pass version info and image name as build args
+          ARG NEXT_VERSION
+          ARG GIT_COMMIT
+          ARG IMAGE_NAME
+          ARG BUILD_DATE
+          ENV NEXT_VERSION=$NEXT_VERSION
+          ENV GIT_COMMIT=$GIT_COMMIT
+          ENV IMAGE_NAME=$IMAGE_NAME
+          ENV BUILD_DATE=$BUILD_DATE
+
+          # Print info on container start
+          USER 185
+          EXPOSE 8080
+
+          # Custom entrypoint that prints info then starts the app
+          ENTRYPOINT ["sh", "-c", "echo 'Starting container: $IMAGE_NAME' && echo 'Version: $NEXT_VERSION' && echo 'Commit: $GIT_COMMIT' && echo 'Build date: $BUILD_DATE' && echo '' && echo '' && java -jar /deployments/quarkus-run.jar"]
+          EOF
+
+      - name: Build Docker image
+        if: steps.quarkus-check.outputs.is-quarkus == 'true'
+        run: |
+          IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.artifact.outputs.name }}"
+          GIT_COMMIT=$(git rev-parse HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          NEXT_VERSION="${{ steps.artifact.outputs.version }}"
+          if [ "${{ inputs.release }}" = "true" ]; then
+            docker build \
+              --build-arg NEXT_VERSION=$NEXT_VERSION \
+              --build-arg GIT_COMMIT=$GIT_COMMIT \
+              --build-arg IMAGE_NAME=$IMAGE_BASE \
+              --build-arg BUILD_DATE="$BUILD_DATE" \
+              --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+              -t "$IMAGE_BASE:latest" \
+              -t "$IMAGE_BASE:$NEXT_VERSION" \
+              docker
+          fi
+          docker build \
+            --build-arg NEXT_VERSION=$NEXT_VERSION \
+            --build-arg GIT_COMMIT=$GIT_COMMIT \
+            --build-arg IMAGE_NAME=$IMAGE_BASE:snapshot \
+            --build-arg BUILD_DATE="$BUILD_DATE" \
+            --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+            -t "$IMAGE_BASE:snapshot" \
+            docker
+          echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
+
+      - name: Log in to registry
+        if: steps.quarkus-check.outputs.is-quarkus == 'true'
+        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
+
+      - name: Push Docker image(s)
+        if: steps.quarkus-check.outputs.is-quarkus == 'true'
+        run: |
+          if [ "${{ inputs.release }}" = "true" ]; then
+            docker push "$IMAGE_BASE:latest"
+            docker push "$IMAGE_BASE:${{ steps.artifact.outputs.version }}"
+          fi
+          docker push "$IMAGE_BASE:snapshot"
