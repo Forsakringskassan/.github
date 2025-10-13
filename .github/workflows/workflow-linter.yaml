@@ -6,12 +6,22 @@ on:
 jobs:
   yamllint:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Create fake requirements.txt
+        run: echo "yamllint" > requirements.txt
+
+      - name: Set up Python and cache
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
       - name: Install yamllint
-        run: sudo apt-get update && sudo apt-get install -y yamllint
+        run: pip install yamllint
 
       - name: Create yamllint config
         run: |
