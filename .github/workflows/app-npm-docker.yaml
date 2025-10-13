@@ -116,6 +116,8 @@ jobs:
               --build-arg IMAGE_NAME=$IMAGE_BASE \
               --build-arg BUILD_DATE="$BUILD_DATE" \
               --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+              --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
+              --label "org.opencontainers.image.licenses=MIT" \
               -t "$IMAGE_BASE:latest" \
               -t "$IMAGE_BASE:$NEXT_VERSION" \
               docker
@@ -126,6 +128,8 @@ jobs:
             --build-arg IMAGE_NAME=$IMAGE_BASE:snapshot \
             --build-arg BUILD_DATE="$BUILD_DATE" \
             --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+            --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
+            --label "org.opencontainers.image.licenses=MIT" \
             -t "$IMAGE_BASE:snapshot" \
             docker
           echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
@@ -138,8 +142,16 @@ jobs:
           if [ "${{ inputs.release }}" = "true" ]; then
             docker push "$IMAGE_BASE:latest"
             docker push "$IMAGE_BASE:${{ steps.version.outputs.nextVersion }}"
+            # Make the package public after pushing
+            gh api --method PATCH /user/packages/container/${{ steps.pkg.outputs.name }}/versions \
+              --field visibility=public || echo "Could not set package visibility, may need manual configuration"
           fi
           docker push "$IMAGE_BASE:snapshot"
+          # Make the snapshot package public after pushing
+          gh api --method PATCH /user/packages/container/${{ steps.pkg.outputs.name }}/versions \
+            --field visibility=public || echo "Could not set package visibility, may need manual configuration"
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Push git tag for version
         if: ${{ inputs.release }}
