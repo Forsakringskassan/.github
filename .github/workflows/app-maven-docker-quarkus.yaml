@@ -150,12 +150,12 @@ jobs:
             docker push "$IMAGE_BASE:latest"
             docker push "$IMAGE_BASE:${{ steps.artifact.outputs.version }}"
             # Make the package public after pushing
-            gh api --method PATCH /user/packages/container/${{ steps.artifact.outputs.name }}/versions \
+            gh api --method PATCH /orgs/forsakringskassan/packages/container/${{ steps.artifact.outputs.name }} \
               --field visibility=public || echo "Could not set package visibility, may need manual configuration"
           fi
           docker push "$IMAGE_BASE:snapshot"
           # Make the snapshot package public after pushing
-          gh api --method PATCH /user/packages/container/${{ steps.artifact.outputs.name }}/versions \
+          gh api --method PATCH /orgs/forsakringskassan/packages/container/${{ steps.artifact.outputs.name }} \
             --field visibility=public || echo "Could not set package visibility, may need manual configuration"
         env:
           GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
