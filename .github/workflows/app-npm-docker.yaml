@@ -147,37 +147,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
-      - name: Make package public
-        run: |
-          echo "Waiting for package to be available..."
-          sleep 10
-          
-          PACKAGE_NAME="${{ steps.pkg.outputs.name }}"
-          echo "Attempting to make package '$PACKAGE_NAME' public..."
-          
-          # Try different approaches to make the package public
-          # Method 1: Try organization packages API
-          if gh api --method PATCH "/orgs/forsakringskassan/packages/container/$PACKAGE_NAME" --field visibility=public 2>/dev/null; then
-            echo "✅ Package set to public via organization endpoint"
-          # Method 2: Try user packages API  
-          elif gh api --method PATCH "/user/packages/container/$PACKAGE_NAME" --field visibility=public 2>/dev/null; then
-            echo "✅ Package set to public via user endpoint"
-          # Method 3: Try with different package format
-          elif gh api --method PATCH "/user/packages/container/forsakringskassan%2F$PACKAGE_NAME" --field visibility=public 2>/dev/null; then
-            echo "✅ Package set to public via encoded user endpoint"
-          # Method 4: List packages to debug
-          else
-            echo "❌ Failed to set package visibility. Debugging info:"
-            echo "Organization packages:"
-            gh api /orgs/forsakringskassan/packages?package_type=container || echo "Could not list org packages"
-            echo "User packages:"
-            gh api /user/packages?package_type=container || echo "Could not list user packages"
-            echo "⚠️ Please manually set package visibility to public in GitHub Package settings"
-            echo "Package should be available at: https://github.com/orgs/forsakringskassan/packages/container/package/$PACKAGE_NAME"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-
       - name: Push git tag for version
         if: ${{ inputs.release }}
         env:
