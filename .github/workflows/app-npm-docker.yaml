@@ -142,14 +142,22 @@ jobs:
           if [ "${{ inputs.release }}" = "true" ]; then
             docker push "$IMAGE_BASE:latest"
             docker push "$IMAGE_BASE:${{ steps.version.outputs.nextVersion }}"
-            # Make the package public after pushing
-            gh api --method PATCH /user/packages/container/${{ steps.pkg.outputs.name }}/versions \
-              --field visibility=public || echo "Could not set package visibility, may need manual configuration"
+            # Try to make the package public - attempt both org and user endpoints
+            echo "Attempting to make package public..."
+            gh api --method PATCH /orgs/forsakringskassan/packages/container/${{ steps.pkg.outputs.name }} \
+              --field visibility=public && echo "✅ Package set to public via org endpoint" || \
+            gh api --method PATCH /user/packages/container/${{ steps.pkg.outputs.name }} \
+              --field visibility=public && echo "✅ Package set to public via user endpoint" || \
+            echo "⚠️ Could not set package visibility automatically. Please set it manually in GitHub Package settings."
           fi
           docker push "$IMAGE_BASE:snapshot"
-          # Make the snapshot package public after pushing
-          gh api --method PATCH /user/packages/container/${{ steps.pkg.outputs.name }}/versions \
-            --field visibility=public || echo "Could not set package visibility, may need manual configuration"
+          # Try to make the snapshot package public - attempt both org and user endpoints
+          echo "Attempting to make snapshot package public..."
+          gh api --method PATCH /orgs/forsakringskassan/packages/container/${{ steps.pkg.outputs.name }} \
+            --field visibility=public && echo "✅ Package set to public via org endpoint" || \
+          gh api --method PATCH /user/packages/container/${{ steps.pkg.outputs.name }} \
+            --field visibility=public && echo "✅ Package set to public via user endpoint" || \
+          echo "⚠️ Could not set package visibility automatically. Please set it manually in GitHub Package settings."
         env:
           GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
