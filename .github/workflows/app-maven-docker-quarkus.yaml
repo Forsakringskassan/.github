@@ -104,7 +104,7 @@ jobs:
           EXPOSE 8080
 
           # Custom entrypoint that prints info then starts the app
-          ENTRYPOINT ["sh", "-c", "echo 'Starting container: $IMAGE_NAME' && echo 'Version: $NEXT_VERSION' && echo 'Commit: $GIT_COMMIT' && echo 'Build date: $BUILD_DATE' && echo '' && echo '' && java -jar /deployments/quarkus-run.jar"]
+          ENTRYPOINT ["sh", "-c", "echo \"Starting container: $IMAGE_NAME\" && echo \"Version: $NEXT_VERSION\" && echo \"Commit: $GIT_COMMIT\" && echo \"Build date: $BUILD_DATE\" && echo \"\" && echo \"\" && java -jar /deployments/quarkus-run.jar"]
           EOF
 
       - name: Build Docker image
