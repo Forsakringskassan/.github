@@ -105,7 +105,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.pkg.outputs.name }}"
+          IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/forsakringskassan/${{ steps.pkg.outputs.name }}"
           GIT_COMMIT=$(git rev-parse HEAD)
           BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           NEXT_VERSION="${{ steps.version.outputs.nextVersion }}"
