@@ -9,16 +9,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Check if Cypress is in package.json
+        id: check-cypress
+        run: |
+          if grep -q '"cypress"' package.json; then
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
       - name: Use Node.js 20.x
+        if: steps.check-cypress.outputs.found == 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 22.x
           cache: "npm"
       - name: Install dependencies
+        if: steps.check-cypress.outputs.found == 'true'
         run: npm ci
       - name: Build (minimal)
+        if: steps.check-cypress.outputs.found == 'true'
         run: npm run build
       - name: Cypress Component Testing
+        if: steps.check-cypress.outputs.found == 'true'
         uses: cypress-io/github-action@v6
         with:
           summary-title: "Component tests"
@@ -26,7 +38,7 @@ jobs:
           component: true
           quiet: true
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: steps.check-cypress.outputs.found == 'true'
         with:
           name: cypress-screenshots
           path: cypress/screenshots
