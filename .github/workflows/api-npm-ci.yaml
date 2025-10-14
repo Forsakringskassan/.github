@@ -14,10 +14,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
 
       - name: Set up JDK
         uses: actions/setup-java@v5
@@ -33,22 +29,11 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      # Special cache here because there is no package-lock.json
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Apply template
-        run: |
-          if [[ ! -f "package.json" ]]; then
-            echo "❌ No package.json found"
-            echo "👉 You need to use latest https://github.com/tomasbjerre/gradle-conventions"
-            exit 1
-          fi
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
