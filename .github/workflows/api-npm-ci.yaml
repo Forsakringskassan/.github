@@ -18,6 +18,20 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "zulu"
+          cache: 'gradle'
+
+      - name: Add NPM files from Gradle
+        run: |
+          ./gradlew processResources
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       # Special cache here because there is no package-lock.json
       - name: Cache npm dependencies
