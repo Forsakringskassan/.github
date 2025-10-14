@@ -37,14 +37,11 @@ jobs:
 
       - name: Apply template
         run: |
-          npx @forsakringskassan/openapi-node-client-generator-cli \
-            --package-name @forsakringskassan/$(echo $GITHUB_REPOSITORY | cut -d '/' -f2) \
-            --package-version $(npx git-changelog-command-line --print-current-version) \
-            --package-url https://github.com/Forsakringskassan/${GITHUB_REPOSITORY}
-
-          cat package.json
-
-          npm install
+          if [[ ! -f "package.json" ]]; then
+            echo "❌ No package.json found"
+            echo "👉 You need to use latest https://github.com/tomasbjerre/gradle-conventions"
+            exit 1
+          fi
 
       - name: Install dependencies
         run: npm ci
