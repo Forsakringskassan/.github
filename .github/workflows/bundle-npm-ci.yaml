@@ -13,3 +13,5 @@ jobs:
     uses: Forsakringskassan/.github/.github/workflows/npm-lint.yaml@main
   call-pr-preview:
     uses: Forsakringskassan/.github/.github/workflows/npm-pr-preview.yaml@main
+  call-pnr-scan:
+    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main

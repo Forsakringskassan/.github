@@ -24,3 +24,5 @@ jobs:
     needs: call-app-npm-docker
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
+  call-pnr-scan:
+    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main

@@ -1,0 +1,19 @@
+name: PNR Scan
+
+on: [workflow_call]
+
+permissions:
+  contents: read
+
+jobs:
+  pnr-scan:
+    name: PNR Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: pnr-scanner
+        run: |
+          errors=$(npx pnr-scanner . 2> /dev/null | egrep "    " | wc -l)
+          if [[ "${errors}" != "0" ]]; then
+              echo "Found ${errors} potential personnummer. Rerun `npx pnr-scanner .` locally for more information."
+              exit 1
+          fi
