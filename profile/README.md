@@ -71,8 +71,8 @@ graph TD
 
     %% Kubernetes deployment
     subgraph Kubernetes_Deployment
-        K2[frontend]
         K3[backend]
+        K2[frontend]
     end
 
     %% Cross-subgraph links
