@@ -15,7 +15,6 @@ jobs:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
   call-api-npm-ci:
-    needs: call-gradle-ci
     uses: Forsakringskassan/.github/.github/workflows/api-npm-ci.yaml@main
   call-pnr-scan:
     uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main
