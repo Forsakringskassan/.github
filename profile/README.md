@@ -27,9 +27,10 @@ This is a quick overview of how we build software.
   - [template-jar-api-generate](https://github.com/Forsakringskassan/template-jar-api-generate) - Example showing how to generate code from OpenAPI that is fetched from [repository](https://github.com/Forsakringskassan/repository).
     - Using [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) via [repository](https://github.com/Forsakringskassan/repository).
 - Deployment
-  - [template-openshift](https://github.com/Forsakringskassan/template-openshift) - Very simplified deployment.
+  - [template-openshift](https://github.com/Forsakringskassan/template-openshift) - Very simplified deployment with Openshift.
     - Using image from [designsystem-user-app](https://github.com/Forsakringskassan/designsystem-user-app).
     - Using image from [template-quarkus](https://github.com/Forsakringskassan/template-quarkus).
+    - There is also [template-kubernetes](https://github.com/Forsakringskassan/template-kubernetes) if you want an even simpler setup with Kubernetes.
 
 ```mermaid
 graph TD
