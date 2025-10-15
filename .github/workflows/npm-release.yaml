@@ -5,6 +5,8 @@ on:
     secrets:
       NPM_TOKEN:
         required: true
+      RELEASE_APP_KEY:
+        required: true
 
 jobs:
   release:
