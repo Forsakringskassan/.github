@@ -99,8 +99,28 @@ jobs:
           ENV IMAGE_NAME=$IMAGE_NAME
           ENV BUILD_DATE=$BUILD_DATE
 
-          # Print info on container start
-          CMD echo "Starting container: $IMAGE_NAME" && echo "Version: $NEXT_VERSION" && echo "Commit: $GIT_COMMIT" && echo "Build date: $BUILD_DATE" && echo "" && echo "" && httpd-foreground
+          # Set default port
+          ENV HTTPD_PORT=8080
+
+          # Create startup script that configures httpd with dynamic port
+          RUN echo '#!/bin/bash' > /usr/local/bin/start-httpd.sh && \
+              echo 'PORT=${HTTPD_PORT:-8080}' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed "s/Listen 80/Listen $PORT/" /usr/local/apache2/conf/httpd.conf > /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Starting container: $IMAGE_NAME"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Version: $NEXT_VERSION"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Commit: $GIT_COMMIT"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Build date: $BUILD_DATE"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Listening on port: $PORT"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo ""' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo ""' >> /usr/local/bin/start-httpd.sh && \
+              echo 'httpd -D FOREGROUND -f /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              chmod +x /usr/local/bin/start-httpd.sh
+
+          # Expose the configurable port
+          EXPOSE $HTTPD_PORT
+
+          # Use the startup script
+          CMD ["/usr/local/bin/start-httpd.sh"]
           EOF
 
       - name: Build Docker image
