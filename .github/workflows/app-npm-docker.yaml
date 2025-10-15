@@ -82,6 +82,7 @@ jobs:
           # Create Dockerfile that prints image name, version, and commit hash
           cat > docker/Dockerfile <<'EOF'
           FROM httpd:latest
+          USER 0
 
           # Clean web root
           RUN rm -rf /usr/local/apache2/htdocs/*
