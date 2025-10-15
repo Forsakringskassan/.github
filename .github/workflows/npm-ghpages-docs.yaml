@@ -4,8 +4,33 @@ concurrency: deploy-${{ github.ref }}
 on: [workflow_call]
 
 jobs:
-  docs:
+  check-docs-script:
     if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    outputs:
+      has-docs-script: ${{ steps.check.outputs.has-docs-script }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Check if build:docs script exists
+        id: check
+        run: |
+          if npm run build:docs --dry-run 2>/dev/null; then
+            echo "has-docs-script=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-docs-script=false" >> $GITHUB_OUTPUT
+          fi
+
+  docs:
+    needs: check-docs-script
+    if: needs.check-docs-script.outputs.has-docs-script == 'true'
     name: Deploy
     runs-on: ubuntu-latest
     env:
