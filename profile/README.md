@@ -7,6 +7,7 @@ This is a quick overview of how we build software.
     - Publishing to [NPMJS](https://www.npmjs.com/org/forsakringskassan).
   - [designsystem-user-app](https://github.com/Forsakringskassan/designsystem-user-app) - Example frontend application using [designsystem](https://github.com/Forsakringskassan/designsystem).
     - Integrates with [template-quarkus](https://github.com/Forsakringskassan/template-quarkus) using client from [template-api](https://github.com/Forsakringskassan/template-api) via [NPMJS](https://www.npmjs.com/org/forsakringskassan).
+    - Mocks backend with [apimock-express](https://github.com/Forsakringskassan/apimock-express) using [devindex-menu](https://github.com/Forsakringskassan/devindex-menu) and mocks from [template-api](https://github.com/Forsakringskassan/template-api).
   - [designsystem-user-lib](https://github.com/Forsakringskassan/designsystem-user-lib) - Example NPM library using our toolchain via [NPMJS](https://www.npmjs.com/org/forsakringskassan).
 - API
   - [template-api](https://github.com/Forsakringskassan/template-api) - Example API that publishes spec and any frontend/backend generated code to [repository](https://github.com/Forsakringskassan/repository).
