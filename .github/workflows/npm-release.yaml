@@ -48,4 +48,5 @@ jobs:
         run: |
           npm config set access public
           npm install --no-save "@forsakringskassan/semantic-release-monorepo-config"
+          npm install --no-save "@forsakringskassan/semantic-release-config"
           npm exec semantic-release
