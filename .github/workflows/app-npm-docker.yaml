@@ -116,7 +116,9 @@ jobs:
               echo 'sed -i "s/Listen 80/Listen $PORT/" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               echo 'sed -i "s|ErrorLog logs/error_log|ErrorLog /tmp/apache2/logs/error_log|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               echo 'sed -i "s|CustomLog logs/access_log|CustomLog /tmp/apache2/logs/access_log|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo 'sed -i "s|PidFile logs/httpd.pid|PidFile /tmp/apache2/run/httpd.pid|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s|#PidFile logs/httpd.pid|PidFile /tmp/apache2/run/httpd.pid|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "PidFile /tmp/apache2/run/httpd.pid" >> /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "ServerName localhost" >> /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Starting container: $IMAGE_NAME"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Version: $NEXT_VERSION"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Commit: $GIT_COMMIT"' >> /usr/local/bin/start-httpd.sh && \
