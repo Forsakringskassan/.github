@@ -103,10 +103,20 @@ jobs:
           # Set default port
           ENV HTTPD_PORT=8080
 
-          # Create startup script that configures httpd with dynamic port
+          # Create writable directories and set permissions for OpenShift/CRC
+          RUN mkdir -p /tmp/apache2/logs /tmp/apache2/run && \
+              chown -R www-data:www-data /usr/local/apache2/htdocs /tmp/apache2 && \
+              chmod -R 755 /usr/local/apache2/htdocs && \
+              chmod -R 777 /tmp/apache2
+
+          # Create startup script that configures httpd with dynamic port and proper permissions
           RUN echo '#!/bin/bash' > /usr/local/bin/start-httpd.sh && \
               echo 'PORT=${HTTPD_PORT:-8080}' >> /usr/local/bin/start-httpd.sh && \
-              echo 'sed "s/Listen 80/Listen $PORT/" /usr/local/apache2/conf/httpd.conf > /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'cp /usr/local/apache2/conf/httpd.conf /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s/Listen 80/Listen $PORT/" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s|ErrorLog logs/error_log|ErrorLog /tmp/apache2/logs/error_log|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s|CustomLog logs/access_log|CustomLog /tmp/apache2/logs/access_log|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s|PidFile logs/httpd.pid|PidFile /tmp/apache2/run/httpd.pid|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Starting container: $IMAGE_NAME"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Version: $NEXT_VERSION"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Commit: $GIT_COMMIT"' >> /usr/local/bin/start-httpd.sh && \
@@ -116,6 +126,9 @@ jobs:
               echo 'echo ""' >> /usr/local/bin/start-httpd.sh && \
               echo 'httpd -D FOREGROUND -f /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               chmod +x /usr/local/bin/start-httpd.sh
+
+          # Switch to www-data user for security
+          USER www-data
 
           # Expose the configurable port
           EXPOSE $HTTPD_PORT
