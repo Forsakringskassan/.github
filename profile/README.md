@@ -26,6 +26,7 @@ This is a quick overview of how we build software.
     - Using [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) via [repository](https://github.com/Forsakringskassan/repository).
   - [template-jar-api-generate](https://github.com/Forsakringskassan/template-jar-api-generate) - Example showing how to generate code from OpenAPI that is fetched from [repository](https://github.com/Forsakringskassan/repository).
     - Using [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) via [repository](https://github.com/Forsakringskassan/repository).
+  - [template-bamoe](https://github.com/Forsakringskassan/template-bamoe) - Example BAMOE.
 - Deployment
   - [template-openshift](https://github.com/Forsakringskassan/template-openshift) - Very simplified deployment with Openshift.
     - Using image from [designsystem-user-app](https://github.com/Forsakringskassan/designsystem-user-app).
