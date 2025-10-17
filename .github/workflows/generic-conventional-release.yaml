@@ -45,8 +45,10 @@ jobs:
             --print-current-version)
 
           if [ -z "$highestVersionTag" ]; then
-            echo "This is the first version in the repo, using 0.0.1 as version"
+            echo "😀 This is the first version in the repo, using 0.0.1 as version"
             currentVersion=0.0.1
+            echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
+            echo "is-new-version=true" >> $GITHUB_OUTPUT
           elif [ "$currentVersion" == "$highestVersion" ]; then
               echo "❌ No changes made that can be released"
               echo "current-version=$currentVersion" >> $GITHUB_OUTPUT

@@ -17,6 +17,7 @@ jobs:
     uses: Forsakringskassan/.github/.github/workflows/app-npm-docker.yaml@main
     with:
       release: false
+      version: snapshot
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
