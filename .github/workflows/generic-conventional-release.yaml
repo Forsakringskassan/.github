@@ -48,14 +48,14 @@ jobs:
             echo "This is the first version in the repo, using 0.0.1 as version"
             currentVersion=0.0.1
           elif [ "$currentVersion" == "$highestVersion" ]; then
-              echo "No changes made that can be released"
-              echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
-              echo "is-new-version=true" >> $GITHUB_OUTPUT
-              exit 0
-          else
-              echo "Changes detected and a new $currentVersion release can be made"
+              echo "❌ No changes made that can be released"
               echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
               echo "is-new-version=false" >> $GITHUB_OUTPUT
+              exit 0
+          else
+              echo "✅ Changes detected and a new $currentVersion release can be made"
+              echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
+              echo "is-new-version=true" >> $GITHUB_OUTPUT
           fi
 
           git tag $currentVersion
