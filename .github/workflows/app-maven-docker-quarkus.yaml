@@ -18,14 +18,17 @@ on:
         required: true
 
 jobs:
-  build-and-push:
+  build-and-push-docker:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
+          fetch-tags: true
+
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -37,36 +40,44 @@ jobs:
           server-username: MAVEN_USERNAME
           server-password: MAVEN_TOKEN
 
-      - name: Check if Quarkus project
-        id: quarkus-check
+      - name: Create Maven settings.xml
         run: |
-          if ./mvnw help:effective-pom | grep -q "io.quarkus"; then
-            echo "is-quarkus=true" >> $GITHUB_OUTPUT
-            echo "✅ This is a Quarkus project"
-          else
-            echo "is-quarkus=false" >> $GITHUB_OUTPUT
-            echo "❌ This is not a Quarkus project, skipping workflow"
-          fi
+          mkdir -p "$RUNNER_TEMP/maven"
+          cat <<'EOF' > "$RUNNER_TEMP/maven/settings.xml"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+                                        http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github--Forsakringskassan--repository</id>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
 
       - name: Get artifact info
-        if: steps.quarkus-check.outputs.is-quarkus == 'true'
         id: artifact
         run: |
-          ARTIFACT_ID=$(./mvnw help:evaluate -Dexpression=project.artifactId -q -DforceStdout)
-          ARTIFACT_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          ARTIFACT_ID=$(./mvnw -s $RUNNER_TEMP/maven/settings.xml help:evaluate -Dexpression=project.artifactId -q -DforceStdout)
+          ARTIFACT_VERSION=$(./mvnw -s $RUNNER_TEMP/maven/settings.xml help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "name=$ARTIFACT_ID" >> $GITHUB_OUTPUT
           echo "version=$ARTIFACT_VERSION" >> $GITHUB_OUTPUT
           echo "📦 Artifact ID: $ARTIFACT_ID, Version: $ARTIFACT_VERSION"
-
-      - name: Build project
-        if: steps.quarkus-check.outputs.is-quarkus == 'true'
         env:
           GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
           GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-        run: ./mvnw clean package -DskipTests
+
+      - name: Build project
+        run: ./mvnw -s $RUNNER_TEMP/maven/settings.xml clean package -DskipTests
+        env:
+          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Prepare Docker context
-        if: steps.quarkus-check.outputs.is-quarkus == 'true'
         run: |
           mkdir docker
           # Find the quarkus app directory (could be named differently)
@@ -108,7 +119,6 @@ jobs:
           EOF
 
       - name: Build Docker image
-        if: steps.quarkus-check.outputs.is-quarkus == 'true'
         run: |
           IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.artifact.outputs.name }}"
           GIT_COMMIT=$(git rev-parse HEAD)
@@ -140,11 +150,9 @@ jobs:
           echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
 
       - name: Log in to registry
-        if: steps.quarkus-check.outputs.is-quarkus == 'true'
         run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
 
       - name: Push Docker image(s)
-        if: steps.quarkus-check.outputs.is-quarkus == 'true'
         run: |
           if [ "${{ inputs.release }}" = "true" ]; then
             docker push "$IMAGE_BASE:latest"

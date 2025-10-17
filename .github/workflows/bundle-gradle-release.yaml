@@ -14,6 +14,3 @@ jobs:
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-  call-publish-release:
-    needs: call-gradle-release
-    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
