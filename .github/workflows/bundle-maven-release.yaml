@@ -28,14 +28,6 @@ jobs:
             echo "❌ This is not a Quarkus project, will trigger maven-release workflow"
           fi
 
-  call-maven-release:
-    needs: check-project-type
-    if: needs.check-project-type.outputs.is-quarkus == 'false'
-    uses: Forsakringskassan/.github/.github/workflows/maven-release.yaml@main
-    secrets:
-      PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-      PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-
   call-app-maven-conventional-release:
     if: needs.check-project-type.outputs.is-quarkus == 'true' && ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     needs: [check-project-type]
@@ -43,6 +35,10 @@ jobs:
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+
+  publish-release:
+    needs: call-app-maven-conventional-release
+    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
 
   call-app-maven-docker-quarkus:
     if: needs.check-project-type.outputs.is-quarkus == 'true' && ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}

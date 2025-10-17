@@ -11,6 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.ref_name }}
           fetch-tags: "true"
           fetch-depth: "0"
       - name: Setup java

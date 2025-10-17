@@ -9,7 +9,7 @@ on:
         required: true
 
 jobs:
-  publish:
+  build-release:
     runs-on: ubuntu-latest
 
     permissions:
@@ -40,3 +40,6 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
           PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+  publish-release:
+    needs: build-release
+    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main

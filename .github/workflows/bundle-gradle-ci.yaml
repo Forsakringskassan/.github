@@ -16,6 +16,3 @@ jobs:
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
   call-pnr-scan:
     uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main
-  publish-release:
-    if: startsWith(github.ref, 'refs/tags/')
-    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main

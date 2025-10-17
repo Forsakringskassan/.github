@@ -18,3 +18,6 @@ jobs:
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
   call-npm-ghpages-app:
     uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
+  publish-release:
+    needs: call-app-npm-docker
+    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
