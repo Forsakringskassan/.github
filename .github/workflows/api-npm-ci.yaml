@@ -2,6 +2,11 @@ name: NPM API CI
 
 on:
   workflow_call:
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
 
 jobs:
   build:
@@ -28,6 +33,8 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
       
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v6

@@ -3,6 +3,10 @@ name: NPM API Release
 on:
   workflow_call:
     secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
       NPM_TOKEN:
         required: true
 
@@ -44,6 +48,8 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
