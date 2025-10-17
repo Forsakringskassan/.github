@@ -1,0 +1,70 @@
+name: Generic Conventional Release
+
+on:
+  workflow_call:
+    outputs:
+      current-version:
+        value: ${{ jobs.generic-conventional-release.outputs.current-version }}
+      is-new-version:
+        value: ${{ jobs.generic-conventional-release.outputs.is-new-version }}
+
+jobs:
+  generic-conventional-release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    outputs:
+      current-version: ${{ steps.version.outputs.current-version }}
+      is-new-version: ${{ steps.version.outputs.is-new-version }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-tags: "true"
+          fetch-depth: "0"
+
+      - name: Git User
+        run: |
+          git config --global user.name "Github Actions"
+          git config --global user.email "nobody@fk.se"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Version and Changelog
+        id: version
+        run: |
+          highestVersion=$(npx git-changelog-command-line \
+            --print-highest-version)
+
+          highestVersionTag=$(npx git-changelog-command-line \
+            --print-highest-version-tag)
+
+          currentVersion=$(npx git-changelog-command-line \
+            --patch-version-pattern "^fix.*" \
+            --print-current-version)
+
+          if [ -z "$highestVersionTag" ]; then
+            echo "This is the first version in the repo, using 0.0.1 as version"
+            currentVersion=0.0.1
+          elif [ "$currentVersion" == "$highestVersion" ]; then
+              echo "No changes made that can be released"
+              echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
+              echo "is-new-version=true" >> $GITHUB_OUTPUT
+              exit 0
+          else
+              echo "Changes detected and a new $currentVersion release can be made"
+              echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
+              echo "is-new-version=false" >> $GITHUB_OUTPUT
+          fi
+
+          git tag $currentVersion
+
+          npx git-changelog-command-line \
+            --ignore-pattern ".*maven-release-plugin.*" \
+            -of CHANGELOG.md
+
+          git add CHANGELOG.md
+          git commit -a -m "chore: updating changelog" || echo "No changes to commit"|| echo "No changes to commit"
+          git push
+          git push --tags
