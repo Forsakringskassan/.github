@@ -9,20 +9,13 @@ on:
         required: true
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  build-java:
+    runs-on: ubuntu-latest
     permissions:
       security-events: write
       actions: read
       contents: read
       packages: read
-    strategy:
-      #max-parallel: 3
-      fail-fast: false
-      matrix:
-        java: ["25"]
-        os: ["ubuntu-latest"]
-    name: Java ${{ matrix.Java }} (${{ matrix.os }})
     env:
       skip-automatic-fk-code-standard-apply: true
       GITHUB_ACTOR: ${{ github.actor }}
@@ -35,7 +28,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: "zulu"
-          java-version: ${{ matrix.java }}
+          java-version: "25"
           cache: 'maven'
       - name: Cache npm
         uses: actions/cache@v4
@@ -88,5 +81,5 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-${{ github.run_number }}-${{ matrix.os }}-${{ matrix.java }}
+          name: build-${{ github.run_number }}
           path: ${{ github.workspace }}

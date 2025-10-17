@@ -17,7 +17,7 @@ jobs:
           else
             echo "found=false" >> $GITHUB_OUTPUT
           fi
-      - name: Use Node.js 20.x
+      - name: Set Node Version
         if: steps.check-cypress.outputs.found == 'true'
         uses: actions/setup-node@v6
         with:

@@ -9,11 +9,8 @@ on:
         required: true
 
 jobs:
-  build:
+  build-npm-api:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22.x]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -36,10 +33,10 @@ jobs:
           PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
           PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
       
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Set Node Version
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22.x
 
       # Special cache here because there is no package-lock.json
       - name: Cache npm dependencies
