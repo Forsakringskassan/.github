@@ -35,11 +35,6 @@ jobs:
     needs: [check-project-type]
     uses: Forsakringskassan/.github/.github/workflows/generic-conventional-release.yaml@main
 
-  publish-release:
-    if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
-    needs: call-app-generic-conventional-release
-    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
-
   call-app-maven-docker-quarkus:
     if: |
       needs.check-project-type.outputs.is-quarkus == 'true' &&
@@ -53,3 +48,8 @@ jobs:
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+
+  publish-release:
+    if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
+    needs: call-app-maven-docker-quarkus
+    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
