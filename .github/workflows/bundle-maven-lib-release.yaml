@@ -16,6 +16,8 @@ jobs:
     if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
     needs: call-app-generic-conventional-release
     uses: Forsakringskassan/.github/.github/workflows/maven-release.yaml@main
+    with:
+      version: ${{ needs.call-app-generic-conventional-release.outputs.current-version }}
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}

@@ -3,6 +3,10 @@ name: Maven Release
 
 on:
   workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
     secrets:
       PACKAGES_RW_ACTOR:
         required: true
@@ -20,8 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-tags: "true"
-          fetch-depth: "0"
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up JDK
         uses: actions/setup-java@v5
@@ -29,33 +34,6 @@ jobs:
           java-version: "25"
           distribution: "zulu"
           cache: 'maven'
-
-      - name: Cache npm
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-cache-v1
-
-      - name: Git User
-        run: |
-          git config --global user.name "Github Actions"
-          git config --global user.email "nobody@fk.se"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-
-      - name: Set version
-        run: |
-          nextVersion=$(npx git-changelog-command-line \
-            --print-next-version)
-          mvn -q versions:set -DnewVersion=${nextVersion}-SNAPSHOT -DprocessAllModules=true
-          git commit -a -m "chore: setting ${nextVersion} version in pom" || echo "No changes to commit"
-
-      - name: Debug token env
-        run: |
-          echo "Actor: $PACKAGES_RW_ACTOR"
-          echo "Token length: ${#PACKAGES_RW_TOKEN}"
-        env:
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Create Maven settings.xml
         run: |
@@ -76,26 +54,22 @@ jobs:
           </settings>
           EOF
 
+      - name: Git User
+        run: |
+          git config --global user.name "Github Actions"
+          git config --global user.email "nobody@fk.se"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Set version
+        run: |
+          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -T 1C versions:set -DnewVersion=${{ inputs.version }} -DprocessAllModules=true
+
       - name: Publish with Maven
         run: |
-          ./mvnw -T 1C -s "$RUNNER_TEMP/maven/settings.xml" release:prepare release:perform -B
+          ./mvnw -T 1C -s "$RUNNER_TEMP/maven/settings.xml" package deploy
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
           PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-
-      - name: Update changelog
-        run: |
-          highestTag=$(npx git-changelog-command-line \
-            --print-highest-version-tag)
-          echo Last release detected as $highestTag
-
-          npx git-changelog-command-line \
-            --ignore-pattern ".*maven-release-plugin.*" \
-            -of CHANGELOG.md
-
-          git add CHANGELOG.md
-          git commit -a -m "chore: updating changelog" || echo "No changes to commit"
-          git push
