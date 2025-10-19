@@ -160,4 +160,3 @@ jobs:
           docker push "$IMAGE_BASE:snapshot"
         env:
           GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-

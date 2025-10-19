@@ -1,0 +1,71 @@
+# Renovate needs credentials to do this, cannot get that working with the Github Renovate App.
+
+name: Renovate Maven/Gradle packages published to GitHub Packages
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Create Renovate config
+        run: |
+          cat <<EOF > renovate.json
+          {
+          "\$schema": "https://docs.renovatebot.com/renovate-schema.json",
+          "extends": ["config:base"],
+          "enabledManagers": ["gradle", "maven"],
+          "hostRules": [
+            {
+            "hostType": "maven",
+            "matchHost": "maven.pkg.github.com",
+            "username": "${{ secrets.PACKAGES_RW_ACTOR }}",
+            "password": "${{ secrets.PACKAGES_RW_TOKEN }}"
+            }
+          ],
+          "packageRules": [
+            {
+            "matchManagers": ["gradle", "maven"],
+            "matchPackagePrefixes": ["se.fk"],
+            "enabled": true
+            },
+            {
+            "matchManagers": ["gradle", "maven"],
+            "excludePackagePrefixes": ["se.fk"],
+            "enabled": false
+            }
+          ],
+          "labels": ["deps", "internal-se.fk"],
+          "automerge": false
+          }
+          EOF
+
+      - name: Run Renovate
+        uses: renovatebot/github-action@v43.0.16
+        env:
+          # TODO: Vi behöver en REPO_WF secret!
+          RENOVATE_TOKEN: ${{ secrets.REPO_WF }}
+          LOG_LEVEL: debug
+          GITHUB_COM_TOKEN: ${{ secrets.REPO_WF }}
+          RENOVATE_PLATFORM: github
+          RENOVATE_AUTODISCOVER: true
+          # TODO: Slå på för alla, ta bort filtret
+          RENOVATE_AUTODISCOVER_FILTER: "Forsakringskassan/template-quarkus"
+        with:
+          configurationFile: renovate.json
+          token: ${{ secrets.REPO_WF }}
