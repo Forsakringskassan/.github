@@ -27,7 +27,8 @@ jobs:
       - name: Check if Quarkus project
         id: quarkus-check
         run: |
-          if grep -q "quarkus-maven-plugin" pom.xml; then
+          if grep -q "quarkus-maven-plugin" pom.xml || \
+             grep -Pzo "(?s)<parent>.*?<groupId>se\.fk\.maven</groupId>.*?<artifactId>fk-maven-parent</artifactId>.*?</parent>" pom.xml > /dev/null; then
             echo "is-quarkus=true" >> $GITHUB_OUTPUT
             echo "✅ This is a Quarkus project"
           else
@@ -36,7 +37,7 @@ jobs:
           fi
 
   call-app-maven-docker-quarkus:
-    if: needs.check-project-type.outputs.is-quarkus == 'true' && ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    if: needs.check-project-type.outputs.is-quarkus == 'true' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     needs: [check-project-type, call-maven-ci]
     uses: Forsakringskassan/.github/.github/workflows/app-maven-docker-quarkus.yaml@main
     with:

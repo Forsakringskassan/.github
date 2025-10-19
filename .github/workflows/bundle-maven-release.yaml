@@ -20,7 +20,8 @@ jobs:
       - name: Check if Quarkus project
         id: quarkus-check
         run: |
-          if grep -q "quarkus-maven-plugin" pom.xml; then
+          if grep -q "quarkus-maven-plugin" pom.xml || \
+             grep -Pzo "(?s)<parent>.*?<groupId>se\.fk\.maven</groupId>.*?<artifactId>fk-maven-parent</artifactId>.*?</parent>" pom.xml > /dev/null; then
             echo "is-quarkus=true" >> $GITHUB_OUTPUT
             echo "✅ This is a Quarkus project"
           else
