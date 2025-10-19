@@ -63,7 +63,7 @@ jobs:
               }
             ],
             "labels": ["deps", "internal-se.fk"],
-            "automerge": false
+            "automerge": true
           }
           EOF
 
