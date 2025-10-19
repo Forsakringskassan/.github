@@ -41,7 +41,7 @@ jobs:
             --print-highest-version-tag)
 
           currentVersion=$(npx git-changelog-command-line \
-            --patch-version-pattern "^fix.*" \
+            --patch-version-pattern "^[Ff]ix|[Cc]hore\\(deps\\).*" \
             --print-current-version)
 
           if [ -z "$highestVersionTag" ]; then
