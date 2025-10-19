@@ -1,0 +1,26 @@
+name: Bundle Maven Lib Release
+
+on:
+  workflow_call:
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
+
+jobs:
+  call-app-generic-conventional-release:
+    uses: Forsakringskassan/.github/.github/workflows/generic-conventional-release.yaml@main
+
+  call-maven-release:
+    if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
+    needs: call-app-generic-conventional-release
+    uses: Forsakringskassan/.github/.github/workflows/maven-release.yaml@main
+    secrets:
+      PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+      PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+
+  publish-release:
+    if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
+    needs: [call-app-generic-conventional-release, call-maven-release]
+    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main

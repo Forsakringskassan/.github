@@ -1,3 +1,7 @@
+#
+# Använd bundle-maven-quarkus direkt istället!
+# Har kvar den är bara för att inte behöva ändra så mycket.
+#
 name: Bundle Maven Release
 
 on:
@@ -9,48 +13,8 @@ on:
         required: true
 
 jobs:
-  check-project-type:
-    runs-on: ubuntu-latest
-    outputs:
-      is-quarkus: ${{ steps.quarkus-check.outputs.is-quarkus }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Check if Quarkus project
-        id: quarkus-check
-        run: |
-          if grep -q "quarkus-maven-plugin" pom.xml || \
-             grep -Pzo "(?s)<parent>.*?<groupId>se\.fk\.maven</groupId>.*?<artifactId>fk-maven-parent</artifactId>.*?</parent>" pom.xml > /dev/null; then
-            echo "is-quarkus=true" >> $GITHUB_OUTPUT
-            echo "✅ This is a Quarkus project"
-          else
-            echo "is-quarkus=false" >> $GITHUB_OUTPUT
-            echo "❌ This is not a Quarkus project, will trigger maven-release workflow"
-          fi
-
-  call-app-generic-conventional-release:
-    if: |
-      needs.check-project-type.outputs.is-quarkus == 'true' &&
-      ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
-    needs: [check-project-type]
-    uses: Forsakringskassan/.github/.github/workflows/generic-conventional-release.yaml@main
-
-  call-app-maven-docker-quarkus:
-    if: |
-      needs.check-project-type.outputs.is-quarkus == 'true' &&
-      needs.call-app-generic-conventional-release.outputs.is-new-version == 'true' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    needs: [check-project-type, call-app-generic-conventional-release]
-    uses: Forsakringskassan/.github/.github/workflows/app-maven-docker-quarkus.yaml@main
-    with:
-      release: true
-      version: ${{ needs.call-app-generic-conventional-release.outputs.current-version }}
+  call-bundle-maven-quarkus-release:
+    uses: Forsakringskassan/.github/.github/workflows/bundle-maven-quarkus-release.yaml@main
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-
-  publish-release:
-    if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
-    needs: call-app-maven-docker-quarkus
-    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
