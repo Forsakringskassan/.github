@@ -66,7 +66,7 @@ jobs:
           EOF
 
       - name: Run Renovate
-        uses: renovatebot/github-action@v43.0.16
+        uses: renovatebot/github-action@v43.0.17
         env:
           RENOVATE_TOKEN: ${{ steps.app-token.outputs.token }}
           LOG_LEVEL: debug
