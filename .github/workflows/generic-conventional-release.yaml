@@ -25,6 +25,19 @@ jobs:
           fetch-tags: "true"
           fetch-depth: "0"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-generic-conventional-release
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
       - name: Git User
         run: |
           git config --global user.name "Github Actions"
