@@ -76,7 +76,7 @@ jobs:
           git tag $currentVersion
 
           npx git-changelog-command-line \
-            --ignore-pattern ".*maven-release-plugin.*" \
+            --ignore-pattern "(.*maven-release-plugin|^Merge pull request).*" \
             -of CHANGELOG.md
 
           git add CHANGELOG.md
