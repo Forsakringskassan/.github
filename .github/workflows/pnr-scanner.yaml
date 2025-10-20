@@ -10,6 +10,22 @@ jobs:
     name: PNR Scan
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-pnr-scanner
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
       - name: pnr-scanner
         run: |
           errors=$(npx pnr-scanner . 2> /dev/null | egrep "    " | wc -l)
