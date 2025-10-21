@@ -73,8 +73,9 @@ jobs:
 
       - name: Build project
         run: |
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -T 1C versions:set -DnewVersion=${{ inputs.version }}
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -T 1C clean package -DskipTests
+          export MAVEN_OPTS="$MAVEN_OPTS -ntp -s $RUNNER_TEMP/maven/settings.xml -T 1C"
+          ./mvnw versions:set -DnewVersion=${{ inputs.version }}
+          ./mvnw clean package -DskipTests
         env:
           GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
           GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
