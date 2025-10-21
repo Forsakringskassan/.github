@@ -62,13 +62,11 @@ jobs:
 
       - name: Set version
         run: |
-          export MAVEN_OPTS="$MAVEN_OPTS -ntp -s $RUNNER_TEMP/maven/settings.xml -T 1C"
-          ./mvnw versions:set -DnewVersion=${{ inputs.version }} -DprocessAllModules=true
+          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -T 1C versions:set -DnewVersion=${{ inputs.version }} -DprocessAllModules=true
 
       - name: Publish with Maven
         run: |
-          export MAVEN_OPTS="$MAVEN_OPTS -ntp -s $RUNNER_TEMP/maven/settings.xml -T 1C"
-          ./mvnw package deploy
+          ./mvnw -T 1C -s "$RUNNER_TEMP/maven/settings.xml" package deploy
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
