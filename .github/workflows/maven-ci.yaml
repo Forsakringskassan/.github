@@ -58,7 +58,7 @@ jobs:
         run: |
           java -version
           javac -version
-          ./mvnw -T 1C -s $RUNNER_TEMP/maven/settings.xml verify
+          ./mvnw -T 1C -s $RUNNER_TEMP/maven/settings.xml -ntp verify
         env:
           PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
           PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
