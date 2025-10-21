@@ -1,0 +1,175 @@
+name: Docker Cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Optional package name (or comma-separated list) to operate on. If empty, all packages in the org will be used."
+        required: false
+        default: "template-quarkus-app"
+      dryRun:
+        required: true
+        default: "false"
+  schedule:
+    - cron: "0 3 * * *"
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up environment
+        run: sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Cleanup untagged Docker packages
+        env:
+          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          ORG_NAME: Forsakringskassan
+          PACKAGE_NAME: ${{ github.event.inputs.package }}
+          DRY_RUN: ${{ github.event.inputs.dryRun }}
+          DEBUG: "false"
+        run: |
+          set -euo pipefail
+
+          VERSIONS_REMOVED=0
+          PACKAGES=()
+          PAGE=1
+
+          # If PACKAGE_NAME provided (via workflow_dispatch input or env), use it.
+          if [ -n "${PACKAGE_NAME:-}" ]; then
+            echo "Using configured package(s): $PACKAGE_NAME"
+            # split comma-separated list into PACKAGES array, trim whitespace
+            IFS=',' read -r -a RAW <<< "$PACKAGE_NAME"
+            for p in "${RAW[@]}"; do
+              # trim leading/trailing whitespace
+              p="$(echo "$p" | xargs)"
+              if [ -n "$p" ]; then
+                PACKAGES+=("$p")
+              fi
+            done
+          else
+            echo "No package configured — fetching all Docker packages in the org..."
+            while : ; do
+              RESPONSE=$(curl -s -u "$GITHUB_ACTOR:$GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/orgs/$ORG_NAME/packages?package_type=container&per_page=100&page=$PAGE")
+
+              if echo "$RESPONSE" | jq -e 'if type=="array" then true else false end' >/dev/null; then
+                mapfile -t NAMES < <(echo "$RESPONSE" | jq -r '.[].name')
+                if [ "${#NAMES[@]}" -eq 0 ]; then
+                  break
+                fi
+                PACKAGES+=("${NAMES[@]}")
+              else
+                echo "Error fetching packages:" >&2
+                echo "$RESPONSE" >&2
+                exit 1
+              fi
+
+              COUNT=$(echo "$RESPONSE" | jq 'length')
+              if [ "$COUNT" -lt 100 ]; then
+                break
+              fi
+              PAGE=$((PAGE + 1))
+            done
+          fi
+
+          if [ ${#PACKAGES[@]} -eq 0 ]; then
+            echo "No Docker packages found or no valid PACKAGE_NAME specified."
+            exit 0
+          fi
+
+          echo "Found packages to process: ${PACKAGES[*]}"
+
+          for pkg in "${PACKAGES[@]}"; do
+            echo "Processing package: $pkg"
+            PAGE_V=1
+            while : ; do
+              RESPONSE_V=$(curl -s -u "$GITHUB_ACTOR:$GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/orgs/$ORG_NAME/packages/container/$pkg/versions?per_page=100&page=$PAGE_V")
+
+              if echo "$RESPONSE_V" | jq -e 'if type=="array" then true else false end' >/dev/null; then
+                # Collect untagged version ids (include .url for optional debug)
+                VERSIONS=$(echo "$RESPONSE_V" | jq -r '
+                  .[]
+                  | select((.metadata.container.tags // []) | length == 0)
+                  | [.id, .url]
+                  | @tsv
+                ')
+
+                if [ -z "$VERSIONS" ]; then
+                  break
+                fi
+
+                while IFS=$'\t' read -r VERSION_ID VERSION_URL; do
+                  echo "  Found untagged version ID: $VERSION_ID"
+
+                  if [ "${DRY_RUN:-true}" = "false" ]; then
+                    # Perform DELETE and capture both response body and HTTP status code.
+                    # Temporarily disable errexit so we can handle curl/network failures ourselves.
+                    set +e
+                    HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE -u "$GITHUB_ACTOR:$GITHUB_TOKEN" \
+                      -H "Accept: application/vnd.github+json" \
+                      "https://api.github.com/orgs/$ORG_NAME/packages/container/$pkg/versions/$VERSION_ID")
+                    CURL_EXIT=$?
+                    set -e
+
+                    # Split response into body and code (last line is the code)
+                    HTTP_CODE=$(printf '%s\n' "$HTTP_RESPONSE" | tail -n1)
+                    HTTP_BODY=$(printf '%s\n' "$HTTP_RESPONSE" | sed '$d')
+
+                    case "$HTTP_CODE" in
+                      204)
+                        VERSIONS_REMOVED=$((VERSIONS_REMOVED + 1))
+                        echo "    Deleted version $VERSION_ID (HTTP $HTTP_CODE)"
+                        ;;
+                      404)
+                        echo "    Not found (HTTP 404) — maybe already deleted"
+                        ;;
+                      401|403)
+                        echo "    Permission error (HTTP $HTTP_CODE). Check token scopes and actor permissions."
+                        if [ "${DEBUG:-false}" = "true" ]; then
+                          echo "    DEBUG: response body: $HTTP_BODY"
+                        fi
+                        ;;
+                      *)
+                        if [ "$CURL_EXIT" -ne 0 ]; then
+                          echo "    Warning: curl failed with exit $CURL_EXIT when deleting version $VERSION_ID"
+                          if [ "${DEBUG:-false}" = "true" ]; then
+                            echo "    DEBUG: curl output: $HTTP_BODY"
+                          fi
+                        else
+                          echo "    Warning: failed to delete version $VERSION_ID (HTTP $HTTP_CODE)"
+                          if [ "${DEBUG:-false}" = "true" ]; then
+                            echo "    DEBUG: response body: $HTTP_BODY"
+                          fi
+                        fi
+                        ;;
+                    esac
+                  else
+                    echo "    (dry run) would delete version $VERSION_ID"
+                    # still count for reporting what would be removed in dry-run
+                    VERSIONS_REMOVED=$((VERSIONS_REMOVED + 1))
+                    if [ "${DEBUG:-false}" = "true" ]; then
+                      echo "    DEBUG: raw version JSON from list response for $VERSION_ID:"
+                      echo "$RESPONSE_V" | jq -c --arg id "$VERSION_ID" '.[] | select(.id == ($id | tonumber))' || true
+                    fi
+                  fi
+                done <<< "$VERSIONS"
+
+              else
+                echo "Error fetching versions for $pkg:" >&2
+                echo "$RESPONSE_V" >&2
+                exit 1
+              fi
+
+              COUNT_V=$(echo "$RESPONSE_V" | jq 'length')
+              if [ "$COUNT_V" -lt 100 ]; then
+                break
+              fi
+              PAGE_V=$((PAGE_V + 1))
+            done
+          done
+
+          printf "Total versions removed (or would be removed in dry-run): %d\n" "$VERSIONS_REMOVED"
