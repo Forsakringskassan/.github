@@ -6,8 +6,9 @@ on:
       package:
         description: "Optional package name (or comma-separated list) to operate on. If empty, all packages in the org will be used."
         required: false
-        default: "template-quarkus-app"
+        default: ""
       dryRun:
+        description: "If true, perform a dry run without deleting any versions."
         required: true
         default: "false"
   schedule:
