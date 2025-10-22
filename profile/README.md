@@ -12,6 +12,8 @@ This is a quick overview of how we build software.
 - API
   - [template-api](https://github.com/Forsakringskassan/template-api) - Example API that publishes spec and any frontend/backend generated code to [repository](https://github.com/Forsakringskassan/repository).
     - Using [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) via [repository](https://github.com/Forsakringskassan/repository).
+  - [template-asyncapi](https://github.com/Forsakringskassan/template-asyncapi) - Example Async API that publishes spec and generated code to [repository](https://github.com/Forsakringskassan/repository).
+    - Using [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) via [repository](https://github.com/Forsakringskassan/repository).
 - Backend
   - [fk-maven](https://github.com/Forsakringskassan/fk-maven) - Parent POM:s to use with Maven to apply our code standard and other things.
     - Publishing to [repository](https://github.com/Forsakringskassan/repository).
@@ -53,6 +55,7 @@ graph TD
         direction TB
         B1[template-api]
         B1 -->|Using| C2
+        B2[template-asyncapi]
     end
 
     %% Frontend nodes
@@ -87,6 +90,7 @@ graph TD
     C4 -->|Publishing JAR| GHRepo
     B1 -->|Publishing JAR| GHRepo
     B1 -->|Publishing NPM| NPM
+    B2 -->|Publishing JAR| GHRepo
     A1 -->|Publishing NPM| NPM
     A2 -->|Publishing Docker| GHRepo
     A3 -->|Publishing NPM| NPM
