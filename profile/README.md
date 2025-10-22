@@ -67,7 +67,7 @@ graph TD
 
     %% Repository subgraph
     subgraph Package_Repositories
-        GHRepo[GitHub Container Registry]
+        GHRepo[GitHub Package Registry]
         NPM[NPMJS]
     end
 
