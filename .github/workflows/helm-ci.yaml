@@ -45,13 +45,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-helm-plugins-
 
-      - name: Add common Helm repositories
+      - name: Helm dependencies
         working-directory: .
         run: |
           echo "📦 Adding common Helm repositories..."
           helm repo add bitnami https://charts.bitnami.com/bitnami || true
           helm repo add stable https://charts.helm.sh/stable || true
           helm repo update
+          helm dependency build
 
       - name: Lint Helm Chart
         working-directory: .
