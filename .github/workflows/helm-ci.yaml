@@ -49,7 +49,6 @@ jobs:
         working-directory: ${{ inputs.chart-path }}
         run: |
           echo "📦 Adding common Helm repositories..."
-          helm repo update
           helm dependency build
 
       - name: Lint Helm Chart
