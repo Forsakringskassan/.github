@@ -17,6 +17,7 @@ This is a quick overview of how we build software.
 - Backend
   - [fk-maven](https://github.com/Forsakringskassan/fk-maven) - Parent POM:s to use with Maven to apply our code standard and other things.
     - Publishing to [repository](https://github.com/Forsakringskassan/repository).
+  - [fk-logging](https://github.com/Forsakringskassan/fk-logging) - Common logging functionality.
   - [gradle-conventions](https://github.com/Forsakringskassan/gradle-conventions) - Precompiled script plugins to use with Gradle to apply our code standard and other things.
     - Publishing to [repository](https://github.com/Forsakringskassan/repository).
   - [template-quarkus](https://github.com/Forsakringskassan/template-quarkus) - Example Quarkus application using our toolchain.
