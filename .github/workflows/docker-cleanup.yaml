@@ -27,7 +27,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
           ORG_NAME: Forsakringskassan
           PACKAGE_NAME: ${{ github.event.inputs.package }}
-          DRY_RUN: ${{ github.event.inputs.dryRun }}
+          DRY_RUN: ${{ github.event.inputs.dryRun || 'false' }}
           DEBUG: "false"
         run: |
           set -euo pipefail
