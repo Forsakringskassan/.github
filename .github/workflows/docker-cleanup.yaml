@@ -9,8 +9,8 @@ on:
         default: ""
       dryRun:
         description: "If true, perform a dry run without deleting any versions."
-        required: true
-        default: "false"
+        required: false
+        default: ""
   schedule:
     - cron: "0 3 * * *"
 
