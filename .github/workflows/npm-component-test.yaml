@@ -37,7 +37,7 @@ jobs:
           browser: chrome
           component: true
           quiet: true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: steps.check-cypress.outputs.found == 'true'
         with:
           name: cypress-screenshots
