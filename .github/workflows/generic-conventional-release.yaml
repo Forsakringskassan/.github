@@ -63,7 +63,7 @@ jobs:
             echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
             echo "is-new-version=true" >> $GITHUB_OUTPUT
           elif [ "$currentVersion" == "$highestVersion" ]; then
-              echo "❌ No changes made that can be released"
+              echo "❌ No changes made that can be released. See https://www.conventionalcommits.org/en/v1.0.0/"
               echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
               echo "is-new-version=false" >> $GITHUB_OUTPUT
               exit 0
