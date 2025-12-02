@@ -38,12 +38,23 @@ jobs:
         with:
           node-version: 24.x
           cache: "npm"
+      - name: Check for build:docs script
+        id: check-build-docs
+        if: github.event.action != 'closed'
+        run: |
+          if jq -e '.scripts["build:docs"]' package.json > /dev/null 2>&1; then
+            echo "has_build_docs=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_build_docs=false" >> $GITHUB_OUTPUT
+          fi
       - name: Install and build
         if: github.event.action != 'closed'
         run: |
           npm ci
           npm run build
-          npm run build:docs
+      - name: Build documentation
+        if: github.event.action != 'closed' && steps.check-build-docs.outputs.has_build_docs == 'true'
+        run: npm run build:docs
       - uses: rossjrw/pr-preview-action@v1
         with:
           source-dir: ./public/
