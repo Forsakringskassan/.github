@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       run_job: ${{ steps.check.outputs.run_job }}
+      has_build_docs: ${{ steps.check-build-docs.outputs.has_build_docs }}
     steps:
       - name: Check if workflow should run
         id: check
@@ -25,10 +26,22 @@ jobs:
           else
             echo "run_job=false" >> $GITHUB_OUTPUT
           fi
+      - name: Checkout
+        if: steps.check.outputs.run_job == 'true'
+        uses: actions/checkout@v6
+      - name: Check for build:docs script
+        id: check-build-docs
+        if: steps.check.outputs.run_job == 'true'
+        run: |
+          if jq -e '.scripts["build:docs"]' package.json > /dev/null 2>&1; then
+            echo "has_build_docs=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_build_docs=false" >> $GITHUB_OUTPUT
+          fi
 
   deploy-preview:
     needs: should-run
-    if: ${{ needs.should-run.outputs.run_job == 'true' }}
+    if: ${{ needs.should-run.outputs.run_job == 'true' && needs.should-run.outputs.has_build_docs == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,22 +51,13 @@ jobs:
         with:
           node-version: 24.x
           cache: "npm"
-      - name: Check for build:docs script
-        id: check-build-docs
-        if: github.event.action != 'closed'
-        run: |
-          if jq -e '.scripts["build:docs"]' package.json > /dev/null 2>&1; then
-            echo "has_build_docs=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_build_docs=false" >> $GITHUB_OUTPUT
-          fi
       - name: Install and build
         if: github.event.action != 'closed'
         run: |
           npm ci
           npm run build
       - name: Build documentation
-        if: github.event.action != 'closed' && steps.check-build-docs.outputs.has_build_docs == 'true'
+        if: github.event.action != 'closed'
         run: npm run build:docs
       - uses: rossjrw/pr-preview-action@v1
         with:
