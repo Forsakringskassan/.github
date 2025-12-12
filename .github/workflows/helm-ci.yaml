@@ -30,7 +30,7 @@ jobs:
           version: ${{ inputs.helm-version }}
 
       - name: Cache Helm repositories
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/helm/repository
           key: ${{ runner.os }}-helm-repos-${{ hashFiles('**/Chart.yaml', '**/Chart.lock') }}
@@ -38,7 +38,7 @@ jobs:
             ${{ runner.os }}-helm-repos-
 
       - name: Cache Helm plugins
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.local/share/helm/plugins
           key: ${{ runner.os }}-helm-plugins-${{ hashFiles('.github/workflows/**') }}
