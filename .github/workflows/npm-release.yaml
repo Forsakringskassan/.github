@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       config-preset:
-        required: true
+        required: false
         type: string
     secrets:
       app-key:
