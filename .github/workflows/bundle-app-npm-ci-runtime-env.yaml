@@ -1,0 +1,29 @@
+name: Bundle App NPM CI with runtime-env
+
+on:
+  workflow_call:
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
+
+jobs:
+  call-npm-ci:
+    uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
+  call-app-npm-docker:
+    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    needs: call-npm-ci
+    uses: Forsakringskassan/.github/.github/workflows/app-npm-docker-runtime-env.yaml@main
+    with:
+      release: false
+      version: snapshot
+    secrets:
+      PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+      PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+  call-npm-ghpages-app:
+    needs: call-app-npm-docker
+    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
+  call-pnr-scan:
+    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main
