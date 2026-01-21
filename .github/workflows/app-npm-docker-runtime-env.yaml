@@ -67,7 +67,7 @@ jobs:
           RUN rm -rf /usr/local/apache2/htdocs/*
           
           # Copy built app from builder stage
-          COPY --from=builder /app/dist/ /usr/local/apache2/htdocs/
+          COPY dist/ /usr/local/apache2/htdocs/
           
           # Copy the runtime environment variable injection script
           COPY dist/env.sh /usr/local/bin/env.sh
