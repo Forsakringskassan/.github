@@ -1,0 +1,180 @@
+name: Build app into Docker image with runtime-env
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      registry:
+        required: false
+        type: string
+        default: ghcr.io
+      release:
+        required: true
+        type: boolean
+    secrets:
+      PACKAGES_RW_ACTOR:
+        required: true
+      PACKAGES_RW_TOKEN:
+        required: true
+
+jobs:
+  build-and-push-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.ref_name }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get and sanitize package name
+        id: pkg
+        run: |
+          RAW_NAME=$(node -p "require('./package.json').name")
+          CLEAN_NAME=$(echo "$RAW_NAME" | tr -d '@' | tr '/' '-' | tr '/' '--')
+          echo "name=$CLEAN_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Package name: $RAW_NAME -> $CLEAN_NAME"
+
+      - name: Build project
+        run: npm run build
+        env:
+          APP_BASE_PATH: false
+
+      - name: Prepare Docker context
+        run: |
+          mkdir docker
+          cp -r dist docker/
+          # Create Dockerfile that prints image name, version, and commit hash
+          cat > docker/Dockerfile <<'EOF'
+          FROM httpd:latest
+          
+          USER 0
+          
+          # Clean web root
+          RUN rm -rf /usr/local/apache2/htdocs/*
+          
+          # Copy built app from builder stage
+          COPY --from=builder /app/dist/ /usr/local/apache2/htdocs/
+          
+          # Copy the runtime environment variable injection script
+          COPY dist/env.sh /usr/local/bin/env.sh
+          
+          # Make script executable and ensure Unix line endings
+          RUN chmod +x /usr/local/bin/env.sh && \
+              sed -i 's/\r$//' /usr/local/bin/env.sh
+          
+          # Pass version info and image name as build args
+          ARG NEXT_VERSION
+          ARG GIT_COMMIT
+          ARG IMAGE_NAME
+          ARG BUILD_DATE
+          ENV NEXT_VERSION=$NEXT_VERSION
+          ENV GIT_COMMIT=$GIT_COMMIT
+          ENV IMAGE_NAME=$IMAGE_NAME
+          ENV BUILD_DATE=$BUILD_DATE
+          
+          # Set default port
+          ENV HTTPD_PORT=8080
+          
+          # Create writable directories and set permissions for OpenShift/CRC
+          RUN mkdir -p /tmp/apache2/logs /tmp/apache2/run && \
+              chown -R www-data:www-data /usr/local/apache2/htdocs /tmp/apache2 && \
+              chmod -R 755 /usr/local/apache2/htdocs && \
+              chmod -R 777 /tmp/apache2
+          
+          # Create startup script that:
+          # 1. Runs runtime environment variable injection
+          # 2. Configures httpd with dynamic port and proper permissions
+          RUN echo '#!/bin/bash' > /usr/local/bin/start-httpd.sh && \
+              echo '' >> /usr/local/bin/start-httpd.sh && \
+              echo '# Run environment variable injection' >> /usr/local/bin/start-httpd.sh && \
+              echo '/usr/local/bin/env.sh' >> /usr/local/bin/start-httpd.sh && \
+              echo '' >> /usr/local/bin/start-httpd.sh && \
+              echo '# Configure Apache' >> /usr/local/bin/start-httpd.sh && \
+              echo 'PORT=${HTTPD_PORT:-8080}' >> /usr/local/bin/start-httpd.sh && \
+              echo 'cp /usr/local/apache2/conf/httpd.conf /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s/Listen 80/Listen $PORT/" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s|ErrorLog logs/error_log|ErrorLog /tmp/apache2/logs/error_log|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s|CustomLog logs/access_log|CustomLog /tmp/apache2/logs/access_log|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'sed -i "s|#PidFile logs/httpd.pid|PidFile /tmp/apache2/run/httpd.pid|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "PidFile /tmp/apache2/run/httpd.pid" >> /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "ServerName localhost" >> /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              echo '' >> /usr/local/bin/start-httpd.sh && \
+              echo '# Display container information' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Starting container: $IMAGE_NAME"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Version: $NEXT_VERSION"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Commit: $GIT_COMMIT"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Build date: $BUILD_DATE"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo "Listening on port: $PORT"' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo ""' >> /usr/local/bin/start-httpd.sh && \
+              echo '' >> /usr/local/bin/start-httpd.sh && \
+              echo '# Start Apache' >> /usr/local/bin/start-httpd.sh && \
+              echo 'httpd -D FOREGROUND -f /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              chmod +x /usr/local/bin/start-httpd.sh
+          
+          # Switch to www-data user for security
+          USER www-data
+          
+                    # Expose the configurable port
+                    EXPOSE $HTTPD_PORT
+          
+                    # Use the startup script
+                    CMD ["/usr/local/bin/start-httpd.sh"]
+          EOF
+          
+      - name: Build Docker image
+        run: |
+          IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.pkg.outputs.name }}"
+          GIT_COMMIT=$(git rev-parse HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          NEXT_VERSION="${{ inputs.version }}"
+          if [ "${{ inputs.release }}" = "true" ]; then
+            docker build \
+              --build-arg NEXT_VERSION=$NEXT_VERSION \
+              --build-arg GIT_COMMIT=$GIT_COMMIT \
+              --build-arg IMAGE_NAME=$IMAGE_BASE \
+              --build-arg BUILD_DATE="$BUILD_DATE" \
+              --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+              --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
+              --label "org.opencontainers.image.licenses=MIT" \
+              -t "$IMAGE_BASE:latest" \
+              -t "$IMAGE_BASE:$NEXT_VERSION" \
+              docker
+          fi
+          docker build \
+            --build-arg NEXT_VERSION=snapshot \
+            --build-arg GIT_COMMIT=$GIT_COMMIT \
+            --build-arg IMAGE_NAME=$IMAGE_BASE:snapshot \
+            --build-arg BUILD_DATE="$BUILD_DATE" \
+            --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+            --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
+            --label "org.opencontainers.image.licenses=MIT" \
+            -t "$IMAGE_BASE:snapshot" \
+            docker
+          echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
+
+      - name: Log in to registry
+        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
+
+      - name: Push Docker image(s)
+        run: |
+          if [ "${{ inputs.release }}" = "true" ]; then
+            docker push "$IMAGE_BASE:latest"
+            docker push "$IMAGE_BASE:${{ inputs.version }}"
+          fi
+          docker push "$IMAGE_BASE:snapshot"
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
