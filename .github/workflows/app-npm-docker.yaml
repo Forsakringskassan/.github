@@ -68,13 +68,6 @@ jobs:
           # Copy built app
           COPY dist/ /usr/local/apache2/htdocs/
 
-          # Copy the runtime environment variable injection script
-          COPY env.sh /usr/local/bin/env.sh
-          
-          # Make script executable and ensure Unix line endings
-          RUN chmod +x /usr/local/bin/env.sh && \
-              sed -i 's/\r$//' /usr/local/bin/env.sh
-
           # Pass version info and image name as build args
           ARG NEXT_VERSION
           ARG GIT_COMMIT
@@ -96,11 +89,6 @@ jobs:
 
           # Create startup script that configures httpd with dynamic port and proper permissions
           RUN echo '#!/bin/bash' > /usr/local/bin/start-httpd.sh && \
-              echo '' >> /usr/local/bin/start-httpd.sh && \
-              echo '# Run environment variable injection' >> /usr/local/bin/start-httpd.sh && \
-              echo '/usr/local/bin/env.sh' >> /usr/local/bin/start-httpd.sh && \
-              echo '' >> /usr/local/bin/start-httpd.sh && \
-              echo '# Configure Apache' >> /usr/local/bin/start-httpd.sh && \
               echo 'PORT=${HTTPD_PORT:-8080}' >> /usr/local/bin/start-httpd.sh && \
               echo 'cp /usr/local/apache2/conf/httpd.conf /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               echo 'sed -i "s/Listen 80/Listen $PORT/" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
@@ -109,16 +97,13 @@ jobs:
               echo 'sed -i "s|#PidFile logs/httpd.pid|PidFile /tmp/apache2/run/httpd.pid|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "PidFile /tmp/apache2/run/httpd.pid" >> /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "ServerName localhost" >> /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo '' >> /usr/local/bin/start-httpd.sh && \
-              echo '# Display container information' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Starting container: $IMAGE_NAME"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Version: $NEXT_VERSION"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Commit: $GIT_COMMIT"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Build date: $BUILD_DATE"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo "Listening on port: $PORT"' >> /usr/local/bin/start-httpd.sh && \
               echo 'echo ""' >> /usr/local/bin/start-httpd.sh && \
-              echo '' >> /usr/local/bin/start-httpd.sh && \
-              echo '# Start Apache' >> /usr/local/bin/start-httpd.sh && \
+              echo 'echo ""' >> /usr/local/bin/start-httpd.sh && \
               echo 'httpd -D FOREGROUND -f /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               chmod +x /usr/local/bin/start-httpd.sh
 
@@ -131,7 +116,7 @@ jobs:
           # Use the startup script
           CMD ["/usr/local/bin/start-httpd.sh"]
           EOF
-
+          
       - name: Build Docker image
         run: |
           IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.pkg.outputs.name }}"
