@@ -91,8 +91,8 @@ jobs:
           
           # Create writable directories and set permissions for OpenShift/CRC
           RUN mkdir -p /tmp/apache2/logs /tmp/apache2/run && \
-              chown -R www-data:www-data /usr/local/apache2/htdocs /tmp/apache2 && \
-              chmod -R 755 /usr/local/apache2/htdocs && \
+              chgrp -R 0 /usr/local/apache2/htdocs && \
+              chmod -R g=u /usr/local/apache2/htdocs && \
               chmod -R 777 /tmp/apache2
           
           # Create startup script that:
