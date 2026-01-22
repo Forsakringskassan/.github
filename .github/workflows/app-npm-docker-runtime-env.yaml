@@ -93,7 +93,8 @@ jobs:
           RUN mkdir -p /tmp/apache2/logs /tmp/apache2/run && \
               chgrp -R 0 /usr/local/apache2/htdocs && \
               chmod -R g=u /usr/local/apache2/htdocs && \
-              chmod -R 777 /tmp/apache2
+              chmod -R 777 /tmp/apache2 && \
+              usermod -a -G 0 www-data
           
           # Create startup script that:
           # 1. Runs runtime environment variable injection
