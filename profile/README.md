@@ -3,20 +3,16 @@
 Nedan är information om våra största projekt för tillfället.
 
 ## FK Designsystem
-FK Designsystem förenklar och effektiviserar arbete med att skapa sammanhållna och inkluderande digitala användargränssnitt. Det består av komponenter, funktioner och designriktlinjer. 
+[FK Designsystem](https://designsystem.forsakringskassan.se/latest/) förenklar och effektiviserar arbete med att skapa sammanhållna och inkluderande digitala användargränssnitt. Det består av komponenter, funktioner och designriktlinjer. 
 
 Vi strävar efter att alla komponenter ska uppfylla WCAG 2.2 AA (eller högre) och EU:s tillgänglighetsdirektiv (EN301549). 
 
 Komponenterna är testade både manuellt och med hjälp av automatiserade verktyg på ett brett urval av enheter.
 
-[Arbetssätt](/designsystem-intro.md)
-
 [Repo](https://github.com/Forsakringskassan/designsystem)
 
-[Projektsida](https://designsystem.forsakringskassan.se/latest/)
-
 ## Rimfrost
-Rimfrost är ett opensourceprojekt som syftar till att skapa en plattform för digitaliserad ärendehandläggning i offentlig verksamhet som måste följa förvaltningslagen och offentlighets- och sekretesslagen. 
+[Rimfrost](https://forsakringskassan.github.io/rimfrost/) är ett opensourceprojekt som syftar till att skapa en plattform för digitaliserad ärendehandläggning i offentlig verksamhet som måste följa förvaltningslagen och offentlighets- och sekretesslagen. 
 
 Rimfrost innehåller ett ramverk för att skapa IT-stöd som drivs av BPMN-specificerade processer som utför manuella och maskinella aktiviteter eller regelkontroller (t.ex. DMN-specificerade regler). 
 
@@ -26,12 +22,4 @@ Det innehåller också en portal och en ”att göra-lista” där uppgifter som
 
 [Repo](https://github.com/Forsakringskassan/rimfrost)
 
-[Projektsida](https://forsakringskassan.github.io/rimfrost/)
-
-## Docs-generator
-Här kan du läsa mer om docs-generator: 
-
-[Repo](https://github.com/Forsakringskassan/docs-generator)
-
-[Projektsida](https://forsakringskassan.github.io/docs-generator/latest/)
 
