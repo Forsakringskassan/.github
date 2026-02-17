@@ -143,7 +143,8 @@ jobs:
           BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           NEXT_VERSION="${{ inputs.version }}"
           if [ "${{ inputs.release }}" = "true" ]; then
-            docker build \
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
               --build-arg NEXT_VERSION=$NEXT_VERSION \
               --build-arg GIT_COMMIT=$GIT_COMMIT \
               --build-arg IMAGE_NAME=$IMAGE_BASE \
@@ -155,7 +156,8 @@ jobs:
               -t "$IMAGE_BASE:$NEXT_VERSION" \
               docker
           fi
-          docker build \
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
             --build-arg NEXT_VERSION=snapshot \
             --build-arg GIT_COMMIT=$GIT_COMMIT \
             --build-arg IMAGE_NAME=$IMAGE_BASE:snapshot \
