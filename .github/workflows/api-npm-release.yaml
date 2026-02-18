@@ -7,26 +7,17 @@ on:
         required: true
       PACKAGES_RW_TOKEN:
         required: true
-      NPM_TOKEN:
-        required: true
 
 jobs:
   api-npm-release:
     name: Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       HUSKY: 0
     steps:
-      - name: Debug NPM_TOKEN availability
-        run: |
-          if [ -z "$NPM_TOKEN" ]; then
-            echo "❌ NPM_TOKEN is empty or not available"
-            exit 1
-          else
-            echo "✅ NPM_TOKEN is available (length: ${#NPM_TOKEN})"
-          fi
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Checkout
         uses: actions/checkout@v6
@@ -55,6 +46,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24.x
+          registry-url: 'https://registry.npmjs.org'
 
       # Special cache here because there is no package-lock.json
       - name: Cache npm dependencies
@@ -71,12 +63,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Set up npm auth
-        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+      - name: Publish with provenance
+        run: npm publish --provenance --access public
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

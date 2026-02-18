@@ -3,8 +3,6 @@ name: Bundle API Release
 on:
   workflow_call:
     secrets:
-      NPM_TOKEN:
-        required: true
       PACKAGES_RW_ACTOR:
         required: true
       PACKAGES_RW_TOKEN:
@@ -23,6 +21,5 @@ jobs:
     needs: call-gradle-release
     uses: Forsakringskassan/.github/.github/workflows/api-npm-release.yaml@main
     secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
