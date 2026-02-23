@@ -119,14 +119,17 @@ jobs:
           # Custom entrypoint that prints info then starts the app
           ENTRYPOINT ["sh", "-c", "echo \"Starting container: $IMAGE_NAME\" && echo \"Version: $NEXT_VERSION\" && echo \"Commit: $GIT_COMMIT\" && echo \"Build date: $BUILD_DATE\" && echo \"\" && echo \"\" && java -jar /deployments/quarkus-run.jar"]
           EOF
-          
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        
-      - name: Build Docker image
+
+      - name: Log in to registry
+        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
+
+      - name: Build and push Docker image(s)
         run: |
           IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.artifact.outputs.name }}"
           GIT_COMMIT=$(git rev-parse HEAD)
@@ -144,7 +147,7 @@ jobs:
               --label "org.opencontainers.image.licenses=MIT" \
               -t "$IMAGE_BASE:latest" \
               -t "$IMAGE_BASE:$NEXT_VERSION" \
-              --load \
+              --push \
               docker
           fi
           docker buildx build \
@@ -157,19 +160,8 @@ jobs:
             --label "org.opencontainers.image.description=Quarkus application: ${{ steps.artifact.outputs.name }}" \
             --label "org.opencontainers.image.licenses=MIT" \
             -t "$IMAGE_BASE:snapshot" \
-            --load \
+            --push \
             docker
           echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
-
-      - name: Log in to registry
-        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
-
-      - name: Push Docker image(s)
-        run: |
-          if [ "${{ inputs.release }}" = "true" ]; then
-            docker push "$IMAGE_BASE:latest"
-            docker push "$IMAGE_BASE:${{ inputs.version }}"
-          fi
-          docker push "$IMAGE_BASE:snapshot"
         env:
           GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
