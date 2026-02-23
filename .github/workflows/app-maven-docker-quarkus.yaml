@@ -138,6 +138,7 @@ jobs:
               --label "org.opencontainers.image.licenses=MIT" \
               -t "$IMAGE_BASE:latest" \
               -t "$IMAGE_BASE:$NEXT_VERSION" \
+              --load \
               docker
           fi
           docker buildx build \
@@ -150,6 +151,7 @@ jobs:
             --label "org.opencontainers.image.description=Quarkus application: ${{ steps.artifact.outputs.name }}" \
             --label "org.opencontainers.image.licenses=MIT" \
             -t "$IMAGE_BASE:snapshot" \
+            --load \
             docker
           echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
 
