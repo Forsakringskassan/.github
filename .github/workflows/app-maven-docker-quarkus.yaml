@@ -171,8 +171,8 @@ jobs:
         run: |          
           if [ "${{ inputs.release }}" = "true" ]; then
             # Release manifests
-            docker manifest create "$IMAGE_BASE:latest" $(for ARCH in "$ARCHS"; do echo -n "$IMAGE_BASE-$ARCH:${{ inputs.version }} "; done)
-            docker manifest create "$IMAGE_BASE:${{ inputs.version }}" $(for ARCH in "$ARCHS"; do echo -n "$IMAGE_BASE-$ARCH:${{ inputs.version }} "; done)
+            docker manifest create "$IMAGE_BASE:latest" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE-$ARCH:${{ inputs.version }} "; done)
+            docker manifest create "$IMAGE_BASE:${{ inputs.version }}" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE-$ARCH:${{ inputs.version }} "; done)
             for ARCH in $ARCHS; do
               docker manifest annotate "$IMAGE_BASE:latest" "$IMAGE_BASE-$ARCH:${{ inputs.version }}" --arch $ARCH --os linux
               docker manifest annotate "$IMAGE_BASE:${{ inputs.version }}" "$IMAGE_BASE-$ARCH:${{ inputs.version }}" --arch $ARCH --os linux
@@ -182,8 +182,8 @@ jobs:
           fi
           
           # Snapshot manifest
-          docker manifest create "$IMAGE_BASE:snapshot" $(for ARCH in "$ARCHS"; do echo -n "$IMAGE_BASE-$ARCH:snapshot "; done)
-          for ARCH in "$ARCHS"; do
+          docker manifest create "$IMAGE_BASE:snapshot" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE-$ARCH:snapshot "; done)
+          for ARCH in $ARCHS; do
             docker manifest annotate "$IMAGE_BASE:snapshot" "$IMAGE_BASE-$ARCH:snapshot" --arch $ARCH --os linux
           done
           docker manifest push "$IMAGE_BASE:snapshot"
