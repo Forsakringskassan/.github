@@ -92,16 +92,33 @@ jobs:
 
               if echo "$RESPONSE_V" | jq -e 'if type=="array" then true else false end' >/dev/null; then
                 # Collect untagged version ids (include .url for optional debug)
+                
                 VERSIONS=$(echo "$RESPONSE_V" | jq -r '
                   .[]
-                  | select((.metadata.container.tags // []) | length == 0)
-                  | [.id, .url]
+                  | . as $v
+                  | ($v.metadata.container.tags // []) as $tags
+                  | $v.metadata.container.media_type as $media
+                  | $v.created_at as $created
+                  |
+                  # Identify semantic release tags
+                  ($tags | map(select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$")))) as $release_tags
+                  |
+                  # Conditions for deletion:
+                  # 1. No tags
+                  # 2. NOT a manifest list
+                  # 3. Older than 7 days
+                  |
+                  select(
+                    ($tags | length == 0)
+                    and
+                    ($media != "application/vnd.docker.distribution.manifest.list.v2+json")
+                    and
+                    ($created | fromdateiso8601 < (now - (7 * 24 * 60 * 60)))
+                  )
+                  |
+                  [.id, .url]
                   | @tsv
                 ')
-
-                if [ -z "$VERSIONS" ]; then
-                  break
-                fi
 
                 while IFS=$'\t' read -r VERSION_ID VERSION_URL; do
                   echo "  Found untagged version ID: $VERSION_ID"
