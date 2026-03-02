@@ -134,8 +134,7 @@ jobs:
           NEXT_VERSION="${{ inputs.version }}"
           
           for ARCH in $ARCHS; do
-            # Build once with temporary tag
-            TMP_TAG="$IMAGE_BASE-$ARCH:tmp"
+            # Build and push snapshot
             docker build \
               --platform linux/$ARCH \
               --build-arg NEXT_VERSION=$NEXT_VERSION \
@@ -145,46 +144,49 @@ jobs:
               --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
               --label "org.opencontainers.image.description=Quarkus application: ${{ steps.artifact.outputs.name }}" \
               --label "org.opencontainers.image.licenses=MIT" \
-              -t "$TMP_TAG" \
+              -t "$IMAGE_BASE:$ARCH-snapshot" \
               docker
+            docker push "$IMAGE_BASE:$ARCH-snapshot"
           
-            # Always tag and push snapshot
-            docker tag "$TMP_TAG" "$IMAGE_BASE-$ARCH:snapshot"
-            docker push "$IMAGE_BASE-$ARCH:snapshot"
-          
-            # Conditionally tag and push release
+            # Build and push release tags (only if release=true)
             if [ "${{ inputs.release }}" = "true" ]; then
-              docker tag "$TMP_TAG" "$IMAGE_BASE-$ARCH:$NEXT_VERSION"
-              docker tag "$TMP_TAG" "$IMAGE_BASE-$ARCH:latest"
-              docker push "$IMAGE_BASE-$ARCH:$NEXT_VERSION"
-              docker push "$IMAGE_BASE-$ARCH:latest"
+              docker build \
+                --platform linux/$ARCH \
+                --build-arg NEXT_VERSION=$NEXT_VERSION \
+                --build-arg GIT_COMMIT=$GIT_COMMIT \
+                --build-arg IMAGE_NAME=$IMAGE_BASE \
+                --build-arg BUILD_DATE="$BUILD_DATE" \
+                --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+                --label "org.opencontainers.image.description=Quarkus application: ${{ steps.artifact.outputs.name }}" \
+                --label "org.opencontainers.image.licenses=MIT" \
+                -t "$IMAGE_BASE:$ARCH-$NEXT_VERSION" \
+                -t "$IMAGE_BASE:$ARCH-latest" \
+                docker
+              docker push "$IMAGE_BASE:$ARCH-$NEXT_VERSION"
+              docker push "$IMAGE_BASE:$ARCH-latest"
             fi
-          
-            # remove temporary tag
-            docker rmi "$TMP_TAG"
-          
           done
         env:
           GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Create and push multi-arch manifests
-        run: |          
+        run: |
           if [ "${{ inputs.release }}" = "true" ]; then
             # Release manifests
-            docker manifest create "$IMAGE_BASE:latest" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE-$ARCH:${{ inputs.version }} "; done)
-            docker manifest create "$IMAGE_BASE:${{ inputs.version }}" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE-$ARCH:${{ inputs.version }} "; done)
+            docker manifest create "$IMAGE_BASE:latest" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-${{ inputs.version }} "; done)
+            docker manifest create "$IMAGE_BASE:${{ inputs.version }}" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-${{ inputs.version }} "; done)
             for ARCH in $ARCHS; do
-              docker manifest annotate "$IMAGE_BASE:latest" "$IMAGE_BASE-$ARCH:${{ inputs.version }}" --arch $ARCH --os linux
-              docker manifest annotate "$IMAGE_BASE:${{ inputs.version }}" "$IMAGE_BASE-$ARCH:${{ inputs.version }}" --arch $ARCH --os linux
+              docker manifest annotate "$IMAGE_BASE:latest" "$IMAGE_BASE:$ARCH-${{ inputs.version }}" --arch $ARCH --os linux
+              docker manifest annotate "$IMAGE_BASE:${{ inputs.version }}" "$IMAGE_BASE:$ARCH-${{ inputs.version }}" --arch $ARCH --os linux
             done
             docker manifest push "$IMAGE_BASE:latest"
             docker manifest push "$IMAGE_BASE:${{ inputs.version }}"
           fi
           
           # Snapshot manifest
-          docker manifest create "$IMAGE_BASE:snapshot" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE-$ARCH:snapshot "; done)
+          docker manifest create "$IMAGE_BASE:snapshot" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-snapshot "; done)
           for ARCH in $ARCHS; do
-            docker manifest annotate "$IMAGE_BASE:snapshot" "$IMAGE_BASE-$ARCH:snapshot" --arch $ARCH --os linux
+            docker manifest annotate "$IMAGE_BASE:snapshot" "$IMAGE_BASE:$ARCH-snapshot" --arch $ARCH --os linux
           done
           docker manifest push "$IMAGE_BASE:snapshot"
         env:
