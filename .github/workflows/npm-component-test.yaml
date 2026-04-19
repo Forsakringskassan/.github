@@ -31,7 +31,7 @@ jobs:
         run: npm run build
       - name: Cypress Component Testing
         if: steps.check-cypress.outputs.found == 'true'
-        uses: cypress-io/github-action@v6
+        uses: cypress-io/github-action@v7
         with:
           summary-title: "Component tests"
           browser: chrome
