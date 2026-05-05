@@ -57,18 +57,14 @@ jobs:
         run: |
           mkdir docker
           cp -r dist docker/
-          # Create Dockerfile that prints image name, version, and commit hash
           cat > docker/Dockerfile <<'EOF'
           FROM httpd:latest
           USER 0
 
-          # Clean web root
           RUN rm -rf /usr/local/apache2/htdocs/*
 
-          # Copy built app
           COPY dist/ /usr/local/apache2/htdocs/
 
-          # Pass version info and image name as build args
           ARG NEXT_VERSION
           ARG GIT_COMMIT
           ARG IMAGE_NAME
@@ -78,16 +74,13 @@ jobs:
           ENV IMAGE_NAME=$IMAGE_NAME
           ENV BUILD_DATE=$BUILD_DATE
 
-          # Set default port
           ENV HTTPD_PORT=8080
 
-          # Create writable directories and set permissions for OpenShift/CRC
           RUN mkdir -p /tmp/apache2/logs /tmp/apache2/run && \
               chown -R www-data:www-data /usr/local/apache2/htdocs /tmp/apache2 && \
               chmod -R 755 /usr/local/apache2/htdocs && \
               chmod -R 777 /tmp/apache2
 
-          # Create startup script that configures httpd with dynamic port and proper permissions
           RUN echo '#!/bin/bash' > /usr/local/bin/start-httpd.sh && \
               echo 'PORT=${HTTPD_PORT:-8080}' >> /usr/local/bin/start-httpd.sh && \
               echo 'cp /usr/local/apache2/conf/httpd.conf /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
@@ -107,22 +100,26 @@ jobs:
               echo 'httpd -D FOREGROUND -f /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
               chmod +x /usr/local/bin/start-httpd.sh
 
-          # Switch to www-data user for security
           USER www-data
 
-          # Expose the configurable port
           EXPOSE $HTTPD_PORT
 
-          # Use the startup script
           CMD ["/usr/local/bin/start-httpd.sh"]
           EOF
-          
-      - name: Build Docker image
+
+      - name: Log in to registry
+        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
         run: |
           IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.pkg.outputs.name }}"
           GIT_COMMIT=$(git rev-parse HEAD)
           BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           NEXT_VERSION="${{ inputs.version }}"
+
           if [ "${{ inputs.release }}" = "true" ]; then
             docker buildx build \
               --platform linux/amd64,linux/arm64 \
@@ -135,8 +132,10 @@ jobs:
               --label "org.opencontainers.image.licenses=MIT" \
               -t "$IMAGE_BASE:latest" \
               -t "$IMAGE_BASE:$NEXT_VERSION" \
+              --push \
               docker
           fi
+
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --build-arg NEXT_VERSION=snapshot \
@@ -147,18 +146,5 @@ jobs:
             --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
             --label "org.opencontainers.image.licenses=MIT" \
             -t "$IMAGE_BASE:snapshot" \
+            --push \
             docker
-          echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
-
-      - name: Log in to registry
-        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
-
-      - name: Push Docker image(s)
-        run: |
-          if [ "${{ inputs.release }}" = "true" ]; then
-            docker push "$IMAGE_BASE:latest"
-            docker push "$IMAGE_BASE:${{ inputs.version }}"
-          fi
-          docker push "$IMAGE_BASE:snapshot"
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
