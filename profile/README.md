@@ -1,5 +1,10 @@
 # Välkommen till Försäkringskassan på Github!
 
+# Introduktion till organisationen
+
+[Introduktion till hur vi arbetar](designsystem-intro.md)
+
+# Våra projekt
 Nedan är information om våra största projekt för tillfället.
 
 ## FK Designsystem
