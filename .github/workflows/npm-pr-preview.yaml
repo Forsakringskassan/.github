@@ -28,7 +28,7 @@ jobs:
           fi
       - name: Checkout
         if: steps.check.outputs.run_job == 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Check for build:docs script
         id: check-build-docs
         if: steps.check.outputs.run_job == 'true'
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
