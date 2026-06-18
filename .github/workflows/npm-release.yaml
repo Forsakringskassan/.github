@@ -30,7 +30,7 @@ jobs:
           app-id: ${{ inputs.app-id }}
           private-key: ${{ secrets.app-key }}
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
