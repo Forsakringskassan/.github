@@ -55,6 +55,13 @@ jobs:
         env:
           APP_BASE_PATH: false
 
+      - name: Create runtime-config.js placeholder
+        run: |
+          cat > dist/runtime-config.js << 'EOF'
+          // Runtime environment — override via Kubernetes ConfigMap
+          window.__env = {};
+          EOF
+
       - name: Prepare Docker context
         run: |
           mkdir docker
@@ -69,6 +76,8 @@ jobs:
           RUN rm -rf /usr/local/apache2/htdocs/*
           
           # Copy built app from builder stage
+          # Runtime env is injected via ConfigMap mounted at:
+          # /usr/local/apache2/htdocs/runtime-config.js
           COPY dist/ /usr/local/apache2/htdocs/
           
           # Pass version info and image name as build args
