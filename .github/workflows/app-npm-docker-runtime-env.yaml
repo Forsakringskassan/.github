@@ -55,6 +55,13 @@ jobs:
         env:
           APP_BASE_PATH: false
 
+      - name: Create runtime-config.js placeholder
+        run: |
+          cat > dist/runtime-config.js << 'EOF'
+          // Runtime environment — override via Kubernetes ConfigMap
+          window.__env = {};
+          EOF
+
       - name: Prepare Docker context
         run: |
           mkdir docker
@@ -69,14 +76,9 @@ jobs:
           RUN rm -rf /usr/local/apache2/htdocs/*
           
           # Copy built app from builder stage
+          # Runtime env is injected via ConfigMap mounted at:
+          # /usr/local/apache2/htdocs/runtime-config.js
           COPY dist/ /usr/local/apache2/htdocs/
-          
-          # Copy the runtime environment variable injection script
-          COPY dist/env.sh /usr/local/bin/env.sh
-          
-          # Make script executable and ensure Unix line endings
-          RUN chmod +x /usr/local/bin/env.sh && \
-              sed -i 's/\r$//' /usr/local/bin/env.sh
           
           # Pass version info and image name as build args
           ARG NEXT_VERSION
@@ -98,13 +100,8 @@ jobs:
               chmod -R 777 /tmp/apache2 && \
               usermod -a -G 0 www-data
           
-          # Create startup script that:
-          # 1. Runs runtime environment variable injection
-          # 2. Configures httpd with dynamic port and proper permissions
+          # Create startup script that configures httpd with dynamic port and proper permissions
           RUN echo '#!/bin/bash' > /usr/local/bin/start-httpd.sh && \
-              echo '' >> /usr/local/bin/start-httpd.sh && \
-              echo '# Run environment variable injection' >> /usr/local/bin/start-httpd.sh && \
-              echo '/usr/local/bin/env.sh' >> /usr/local/bin/start-httpd.sh && \
               echo '' >> /usr/local/bin/start-httpd.sh && \
               echo '# Configure Apache' >> /usr/local/bin/start-httpd.sh && \
               echo 'PORT=${HTTPD_PORT:-8080}' >> /usr/local/bin/start-httpd.sh && \
