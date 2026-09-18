@@ -9,6 +9,10 @@ on:
       config-preset:
         required: false
         type: string
+      build-command:
+        description: Build command run before starting the release
+        required: false
+        default: "npm run --if-present build"
     secrets:
       app-key:
         required: true
@@ -42,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build
-        run: npm run --if-present build
+        run: ${{ inputs.build-command }}
       - name: Release
         uses: Forsakringskassan/semantic-release-config@main
         with:
