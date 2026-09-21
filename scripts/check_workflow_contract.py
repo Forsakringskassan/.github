@@ -139,6 +139,28 @@ def check_action_references(path: Path, doc: dict) -> None:
     walk(doc)
 
 
+def check_declaration(path: Path, doc: dict) -> None:
+    """Guard two ways a workflow_call block silently becomes unloadable.
+
+    GitHub rejects the whole file in both cases, and reports it as a run that
+    fails after 0s with no job and no log -- easy to miss.
+    """
+    spec = call_spec(doc)
+    for kind in ("inputs", "secrets"):
+        for name, definition in declared(spec, kind).items():
+            if not isinstance(definition, dict):
+                continue
+            description = definition.get("description")
+            if isinstance(description, str) and "${{" in description:
+                fail(
+                    path.name,
+                    f"{kind[:-1]} '{name}' has an expression in its "
+                    f"description; GitHub evaluates those and rejects the file",
+                )
+            if kind == "inputs" and "type" not in definition:
+                fail(path.name, f"input '{name}' is missing a type")
+
+
 def check_tier(path: Path, doc: dict) -> None:
     name = path.name
     jobs = doc.get("jobs") or {}
@@ -188,6 +210,7 @@ def main() -> int:
             continue
 
         check_tier(path, doc)
+        check_declaration(path, doc)
         check_action_references(path, doc)
         for job_name, job in (doc.get("jobs") or {}).items():
             if isinstance(job, dict):

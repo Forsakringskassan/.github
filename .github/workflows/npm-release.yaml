@@ -10,7 +10,7 @@ on:
       app-id:
         description: >-
           App id of the GitHub App used to push the release commit and tag.
-          Normally `${{ vars.RELEASE_APP_ID }}`.
+          Normally the repository variable RELEASE_APP_ID.
         required: true
         type: string
       config-preset:

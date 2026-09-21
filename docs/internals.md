@@ -98,7 +98,14 @@ composite actions from `main`. Keep composite actions backwards compatible.
 - every `Forsakringskassan/.github/...` reference resolves to a file that
   exists;
 - **every input and secret passed to an internal workflow is declared by it,
-  and every required one is passed.**
+  and every required one is passed;**
+- every declared input has a `type`, and no input or secret description
+  contains a `${{ ... }}` expression.
+
+The last two look pedantic but are the two ways a `workflow_call` block becomes
+unloadable. GitHub rejects the whole file and reports it as a run that fails
+after 0s with no job and no log, which is easy to miss — both have happened
+here.
 
 Run it locally with `python3 scripts/check_workflow_contract.py` (needs
 PyYAML).
