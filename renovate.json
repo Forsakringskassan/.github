@@ -8,6 +8,14 @@
       "/^actions/.+/action\\.ya?ml$/"
     ]
   },
+  "packageRules": [
+    {
+      "description": "This repository's own actions are pinned by the release process, not by Renovate. Letting Renovate bump them would loop: every update it pushes moves main and makes the pin stale again.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["Forsakringskassan/.github"],
+      "enabled": false
+    }
+  ],
   "automerge": true,
   "automergeType": "pr",
   "automergeStrategy": "auto",

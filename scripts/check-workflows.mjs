@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Enforces the structure described in README.md.
+ * Enforces the structure described in .github/README.md.
  *
  * The workflows in this repository are the CI environment for the whole
  * organisation, so a mistake here lands in every repository at once. This
@@ -89,15 +89,22 @@ function checkWorkflow(file, doc, source) {
 }
 
 /**
- * Every `uses:` must name a commit SHA and carry a `# <ref>` comment.
+ * Every `uses:` must be pinned to something immutable.
  *
- * A caller that pins a bundle to a SHA expects the same build tomorrow. That
- * only holds if everything the bundle reaches for is pinned too, including the
- * actions in this repository -- which is why those are pinned rather than
- * taken at @main. Renovate keeps every one of them up to date.
+ * A caller that pins a bundle to a SHA expects the same build tomorrow, which
+ * only holds if everything the bundle reaches for is pinned too. The two kinds
+ * of reference are pinned differently:
+ *
+ * - Another repository: a commit SHA with a `# <ref>` comment. Renovate reads
+ *   the comment and keeps the SHA current.
+ * - This repository's own actions: a `vX.Y.Z` tag. A SHA cannot work here --
+ *   you do not know the SHA of the commit you are writing, and Renovate would
+ *   chase its own tail, because every update it pushes moves `main` and makes
+ *   the pin stale again. See scripts/pin-actions.mjs.
  */
 function checkUses(where, source) {
   const PINNED = /^[0-9a-f]{40}$/;
+  const RELEASE = /^v\d+\.\d+\.\d+$/;
   for (const line of source.split("\n")) {
     const match = /^\s*(?:-\s*)?uses:\s*(\S+)\s*(?:#\s*(\S+))?/.exec(line);
     if (!match) continue;
@@ -113,6 +120,22 @@ function checkUses(where, source) {
     }
 
     const ref = uses.split("@")[1];
+
+    if (uses.startsWith(ACTION_PREFIX)) {
+      const name = uses.slice(ACTION_PREFIX.length).split("@")[0];
+      if (!actionNames.has(name)) {
+        fail(where, `uses missing action ${ACTIONS}/${name}`);
+      }
+      if (!ref || !RELEASE.test(ref)) {
+        fail(
+          where,
+          `uses '${uses}'; an action in this repository is pinned to a ` +
+            "vX.Y.Z tag, not a branch or a SHA. Run `npm run pin`.",
+        );
+      }
+      continue;
+    }
+
     if (!ref || !PINNED.test(ref)) {
       fail(where, `uses '${uses}'; pin it to a commit SHA`);
     } else if (!comment) {
@@ -120,13 +143,6 @@ function checkUses(where, source) {
         where,
         `uses '${uses}' without a '# <ref>' comment saying what it is`,
       );
-    }
-
-    if (uses.startsWith(ACTION_PREFIX)) {
-      const name = uses.slice(ACTION_PREFIX.length).split("@")[0];
-      if (!actionNames.has(name)) {
-        fail(where, `uses missing action ${ACTIONS}/${name}`);
-      }
     }
   }
 }

@@ -27,8 +27,26 @@ runs:
       shell: bash
       run: npm run --if-present html-validate -- --max-warnings 0
 
+    # Deliberately the CLI rather than the ext/npm-pkg-lint action: the action's
+    # inputs mirror the CLI's flags, so the two versions have to agree, and a
+    # shared bundle cannot pin one action version that matches every caller's
+    # package.json. `npm exec` runs whatever the caller installed, so they agree
+    # by construction.
+    - name: Cache npm-pkg-lint
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.cache/npm-pkg-lint
+        key: npm-pkg-lint
+
     - name: npm-pkg-lint
-      uses: ext/npm-pkg-lint@52f0ad3b4dc08b570f2f45ce95bd8d1f67bd3297 # v5.3.1
+      shell: bash
+      run: |
+        if [ -z "$(npm ls --parseable npm-pkg-lint 2>/dev/null)" ]; then
+          echo "npm-pkg-lint is not a dependency, skipping"
+          exit 0
+        fi
+        npm pack
+        npm exec npm-pkg-lint
 
     - name: Are the types wrong?
       shell: bash

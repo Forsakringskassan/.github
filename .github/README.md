@@ -91,14 +91,14 @@ permissions:
 jobs:
   release:
     uses: Forsakringskassan/.github/.github/workflows/bundle-npm-lib-release.yaml@main
-    secrets:
-      app-key: ${{ secrets.RELEASE_APP_KEY }}
+    secrets: inherit
 ```
 
-Releasing also needs the repository variable `RELEASE_APP_ID`, the client ID of
-the GitHub App that authors the release commit. The bundle reads it itself —
-`vars` in a called workflow resolves against the calling repository — so you
-only pass the secret.
+Releasing needs two things from your repository: the variable `RELEASE_APP_ID`
+and the secret `RELEASE_APP_KEY`, the GitHub App that authors the release
+commit. The bundle reads both by name — `vars` and, with `secrets: inherit`,
+`secrets` resolve against the calling repository — so there is nothing to
+list.
 
 ### What the npm bundles run
 
@@ -149,7 +149,8 @@ genuinely wrong for your repository.
 | `config-preset` | empty                        | semantic-release preset, empty = detect |
 | `build-command` | `npm run --if-present build` | Build command run before releasing      |
 
-Secret: `app-key`, required. Variable: `RELEASE_APP_ID`, required for release.
+Releasing reads the variable `RELEASE_APP_ID` and the secret
+`RELEASE_APP_KEY` from the calling repository. Neither is an input.
 
 ### Pinning
 
@@ -161,11 +162,10 @@ uses: Forsakringskassan/.github/.github/workflows/bundle-npm-lib-ci.yaml@<sha> #
 ```
 
 **A pinned bundle is reproducible.** Everything a bundle reaches for is itself
-pinned to a SHA, including the actions in this repository — that is why the
-bundles say `actions/npm-setup@<sha> # main` and not `@main`. `uses:` cannot
-take an expression, so a bundle has no way to pass its own ref down to an
-action; pinning each one by hand is what closes that hole. Renovate keeps every
-pin, here and in your repository, up to date.
+pinned, so nothing underneath it moves. `uses:` cannot take an expression, so a
+bundle has no way to pass its own ref down to the actions it composes — they
+are pinned explicitly instead. Renovate keeps every pin, here and in your
+repository, up to date.
 
 A plain `@main` also works if you would rather always have the latest.
 
@@ -215,9 +215,9 @@ npm run prettier:write
 - a bundle is `workflow_call`-only, carries a `# PUBLIC API` header comment,
   and gives every input a `type` and a `description`
 - a `self-*` workflow is not reusable
-- every `uses:` is pinned to a 40-character commit SHA and carries a
-  `# <ref>` comment saying what that SHA is, so a pinned bundle builds the same
-  way tomorrow
+- every `uses:` to another repository is pinned to a 40-character commit SHA
+  and carries a `# <ref>` comment saying what that SHA is
+- every `uses:` to an action in this repository is pinned to a `vX.Y.Z` tag
 - every `Forsakringskassan/.github/actions/<name>` reference resolves — a
   relative `./actions/...` would resolve against the _calling_ repository, so
   it is rejected
@@ -236,8 +236,27 @@ npm run prettier:write
    nothing.
 4. Add the bundle to the table above, and run `npm run lint`.
 
-Changing an action takes two steps, because the bundles pin it: merge the
-change to the action, then bump the SHA in the bundles that use it. Renovate
-opens that second pull request on its own, or you can do it by hand.
+### Releasing
+
+The bundles pin the actions they compose, so a change to an action only reaches
+callers once a new version exists. Changing an action and publishing it is one
+commit:
+
+```sh
+npm run pin -- v1.0.1                     # rewrite the references
+git commit -am "chore: release v1.0.1"
+git tag v1.0.1 && git push --follow-tags
+```
+
+The references and the tag land on the same commit, so the bundle at `v1.0.1`
+uses the actions at `v1.0.1`.
+
+It has to be a tag and not a commit SHA. You do not know the SHA of the commit
+you are writing, so you could never pin it in the same commit; and Renovate
+would chase its own tail, because every update it pushed would move `main` and
+make the pin stale again. A version tag has neither problem, which is why
+Renovate is switched off for this repository's own references in
+[`renovate.json`](../renovate.json) — the release above owns them. Renovate
+still maintains every third-party pin.
 
 Guidance for agents is in [AGENTS.md](../AGENTS.md).

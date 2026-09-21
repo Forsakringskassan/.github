@@ -7,6 +7,7 @@
   "scripts": {
     "check-workflows": "node scripts/check-workflows.mjs",
     "lint": "npm run prettier:check && npm run check-workflows",
+    "pin": "node scripts/pin-actions.mjs",
     "prettier:check": "prettier --check .",
     "prettier:write": "prettier --write ."
   },
