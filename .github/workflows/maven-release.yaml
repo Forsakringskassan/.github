@@ -1,12 +1,26 @@
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# See docs/internals.md.
 name: Maven Release
-
 
 on:
   workflow_call:
     inputs:
       version:
+        description: Version to set before deploying.
         required: true
         type: string
+      java-version:
+        description: Java version used to build.
+        required: false
+        type: string
+        default: "25"
+      java-distribution:
+        description: Java distribution used to build.
+        required: false
+        type: string
+        default: zulu
     secrets:
       PACKAGES_RW_ACTOR:
         required: true
@@ -16,11 +30,13 @@ on:
 jobs:
   maven-release:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
       packages: write
-
+    env:
+      # Credentials resolved by the generated settings.xml.
+      MAVEN_USERNAME: ${{ secrets.PACKAGES_RW_ACTOR }}
+      MAVEN_PASSWORD: ${{ secrets.PACKAGES_RW_TOKEN }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -31,42 +47,28 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v6
         with:
-          java-version: "25"
-          distribution: "zulu"
-          cache: 'maven'
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          cache: maven
 
       - name: Create Maven settings.xml
-        run: |
-          mkdir -p "$RUNNER_TEMP/maven"
-          cat <<'EOF' > "$RUNNER_TEMP/maven/settings.xml"
-          <?xml version="1.0" encoding="UTF-8"?>
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
-                                        http://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>github--Forsakringskassan--repository</id>
-                <username>${env.PACKAGES_RW_ACTOR}</username>
-                <password>${env.PACKAGES_RW_TOKEN}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
+        uses: Forsakringskassan/.github/actions/maven-settings@main
 
       - name: Git User
         run: |
           git config --global user.name "Github Actions"
           git config --global user.email "nobody@fk.se"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote set-url origin \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
       - name: Set version
         run: |
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C versions:set -DnewVersion=${{ inputs.version }} -DprocessAllModules=true
+          ./mvnw -s "$MAVEN_SETTINGS" -ntp -T 1C \
+            versions:set -DnewVersion=${{ inputs.version }} -DprocessAllModules=true
 
       - name: Publish with Maven
         run: |
-          ./mvnw -T 1C -s "$RUNNER_TEMP/maven/settings.xml" -ntp package deploy
+          ./mvnw -T 1C -s "$MAVEN_SETTINGS" -ntp package deploy
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

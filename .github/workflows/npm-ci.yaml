@@ -1,10 +1,37 @@
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# See docs/internals.md.
 name: NPM CI
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      node-versions:
+        description: >-
+          JSON array of Node.js versions to build against,
+          e.g. '["22.x", "24.x"]'.
+        required: false
+        type: string
+        default: '["24.x"]'
+      build-command:
+        description: Command used to build.
+        required: false
+        type: string
+        default: npm run --if-present build
+      test-command:
+        description: Command used to run tests.
+        required: false
+        type: string
+        default: npm run --if-present test
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ${{ fromJSON(inputs.node-versions) }}
     env:
       HUSKY: 0
     steps:
@@ -12,21 +39,26 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24.x
+          node-version: ${{ matrix.node-version }}
           cache: "npm"
+
       - name: Install dependencies
         run: npm ci
+
       - name: Build
-        run: npm run build
+        run: ${{ inputs.build-command }}
+
       - name: Test
-        run: npm run test --if-present
+        run: ${{ inputs.test-command }}
+
       - name: Publish test results
         if: github.event_name == 'push' && (success() || failure())
         uses: mikepenz/action-junit-report@v6
         with:
           report_paths: "**/test-results/jest-junit.xml"
           include_passed: true
-          check_name: Jest
+          check_name: Jest (node ${{ matrix.node-version }})

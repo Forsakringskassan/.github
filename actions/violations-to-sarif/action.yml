@@ -1,0 +1,51 @@
+---
+name: Static code analysis to SARIF
+description: >-
+  Collects static code analysis and test reports produced by a Maven or Gradle
+  build, converts them to SARIF with violations-command-line and uploads the
+  result to GitHub code scanning.
+
+inputs:
+  build-tool:
+    description: Which report layout to look for, "maven" or "gradle".
+    required: true
+  category:
+    description: Code scanning category to upload under.
+    required: false
+    default: violations-lib
+
+runs:
+  using: composite
+  steps:
+    - name: Transform static code analysis to SARIF
+      shell: bash
+      env:
+        BUILD_TOOL: ${{ inputs.build-tool }}
+      run: |
+        set -euo pipefail
+        case "$BUILD_TOOL" in
+          maven)
+            npx --yes violations-command-line -sarif sarif-report.json \
+              -v "FINDBUGS" "." ".*/findbugs.*\.xml$" "Findbugs" \
+              -v "FINDBUGS" "." ".*/spotbugsXml.*\.xml$" "Spotbugs" \
+              -v "CHECKSTYLE" "." ".*/checkstyle.*\.xml$" "Checkstyle" \
+              -v "PMD" "." ".*/pmd.*\.xml$" "PMD"
+            ;;
+          gradle)
+            npx --yes violations-command-line -sarif sarif-report.json \
+              -v "FINDBUGS" "." ".*build/reports/spotbugs/main\.xml$" "Spotbugs" \
+              -v "CHECKSTYLE" "." ".*build/reports/checkstyle/main\.xml$" "Checkstyle" \
+              -v "PMD" "." ".*build/reports/pmd/main\.xml$" "PMD" \
+              -v "JUNIT" "." ".*/build/test-results/test/TEST-.*\.xml$" "JUNIT"
+            ;;
+          *)
+            echo "::error::Unknown build-tool '$BUILD_TOOL', expected maven or gradle"
+            exit 1
+            ;;
+        esac
+
+    - name: Upload SARIF
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: sarif-report.json
+        category: ${{ inputs.category }}

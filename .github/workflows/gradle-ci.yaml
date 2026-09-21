@@ -1,7 +1,22 @@
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# See docs/internals.md.
 name: Gradle CI
 
 on:
   workflow_call:
+    inputs:
+      java-version:
+        description: Java version used to build.
+        required: false
+        type: string
+        default: "25"
+      java-distribution:
+        description: Java distribution used to build.
+        required: false
+        type: string
+        default: zulu
     secrets:
       PACKAGES_RW_ACTOR:
         required: true
@@ -20,55 +35,48 @@ jobs:
       skip-automatic-fk-code-standard-apply: true
       GITHUB_ACTOR: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
+      PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: "1"
+
       - name: Setup java
         uses: actions/setup-java@v6
         with:
-          distribution: "zulu"
-          java-version: "25"
-          cache: 'gradle'
+          distribution: ${{ inputs.java-distribution }}
+          java-version: ${{ inputs.java-version }}
+          cache: gradle
+
       - name: Cache npm
         uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-cache-v1
-      - name: prepare Gradle
+
+      - name: Prepare Gradle
         shell: bash
         run: |
-          mkdir -p ~/.gradle && echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+          mkdir -p ~/.gradle
+          echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+
       - name: Check formatting
         shell: bash
-        run: |
-          ./gradlew --no-daemon spotlessJavaCheck
-        env:
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-      - name: "Gradle build"
+        run: ./gradlew --no-daemon spotlessJavaCheck
+
+      - name: Gradle build
         shell: bash
         run: |
           java -version
           javac -version
           ./gradlew --no-daemon build
-        env:
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
-      - name: Transorm static code analysis to SARIF
-        if: ${{ (success() || failure()) }}
-        run: |
-          npx violations-command-line -sarif sarif-report.json \
-          -v "FINDBUGS" "." ".*build/reports/spotbugs/main\.xml$" "Spotbugs" \
-          -v "CHECKSTYLE" "." ".*build/reports/checkstyle/main\.xml$" "Checkstyle" \
-          -v "PMD" "." ".*build/reports/pmd/main\.xml$" "PMD" \
-          -v "JUNIT" "." ".*/build/test-results/test/TEST-.*\.xml$" "JUNIT"
-      - uses: github/codeql-action/upload-sarif@v4
-        if: ${{ (success() || failure()) }}
+      - name: Static code analysis to SARIF
+        if: success() || failure()
+        uses: Forsakringskassan/.github/actions/violations-to-sarif@main
         with:
-          sarif_file: sarif-report.json
-          category: violations-lib
+          build-tool: gradle
 
       - name: Publish Build
         uses: actions/upload-artifact@v7

@@ -1,6 +1,18 @@
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# Need this as a step inside an existing job? Use the composite action
+# Forsakringskassan/.github/actions/pnr-scan instead. See docs/internals.md.
 name: PNR Scan
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Path to scan.
+        required: false
+        type: string
+        default: "."
 
 permissions:
   contents: read
@@ -27,9 +39,6 @@ jobs:
             ${{ runner.os }}-npm-
 
       - name: pnr-scanner
-        run: |
-          errors=$(npx pnr-scanner . 2> /dev/null | egrep "    " | wc -l)
-          if [[ "${errors}" != "0" ]]; then
-              echo "Found ${errors} potential personnummer. Rerun `npx pnr-scanner .` locally for more information."
-              exit 1
-          fi
+        uses: Forsakringskassan/.github/actions/pnr-scan@main
+        with:
+          path: ${{ inputs.path }}

@@ -1,3 +1,7 @@
+---
+# PUBLIC API.
+# Repo kind: Maven library published to GitHub Packages (no container image).
+# Companion CI bundle: bundle-maven-lib-ci.yaml
 name: Bundle Maven Lib Release
 
 on:

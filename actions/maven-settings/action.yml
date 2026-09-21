@@ -1,0 +1,51 @@
+---
+name: Maven settings.xml
+description: >-
+  Writes a Maven settings.xml granting access to the Forsakringskassan GitHub
+  Packages repository and exports its path as the step output `path` and as the
+  environment variable `MAVEN_SETTINGS`. The credentials themselves are never
+  written to disk: settings.xml refers to the MAVEN_USERNAME / MAVEN_PASSWORD
+  environment variables, which the calling job must set on its `mvn` steps.
+
+inputs:
+  server-id:
+    description: Maven server id to write credentials for.
+    required: false
+    default: github--Forsakringskassan--repository
+
+outputs:
+  path:
+    description: Absolute path to the generated settings.xml.
+    value: ${{ steps.write.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Write settings.xml
+      id: write
+      shell: bash
+      env:
+        SERVER_ID: ${{ inputs.server-id }}
+      run: |
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/maven"
+        settings="$RUNNER_TEMP/maven/settings.xml"
+        cat <<'EOF' > "$settings"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+          <servers>
+            <server>
+              <id>@SERVER_ID@</id>
+              <username>${env.MAVEN_USERNAME}</username>
+              <password>${env.MAVEN_PASSWORD}</password>
+            </server>
+          </servers>
+        </settings>
+        EOF
+        sed -i "s|@SERVER_ID@|${SERVER_ID}|" "$settings"
+        echo "path=$settings" >> "$GITHUB_OUTPUT"
+        echo "MAVEN_SETTINGS=$settings" >> "$GITHUB_ENV"
+        echo "Wrote $settings for server id ${SERVER_ID}"

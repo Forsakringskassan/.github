@@ -1,7 +1,30 @@
+---
+# PUBLIC API.
+# Repo kind: web application built with npm and shipped as a Docker image.
+# Companion CI bundle: bundle-app-npm-ci.yaml
 name: Bundle App NPM Release
 
 on:
   workflow_call:
+    inputs:
+      runtime-env:
+        description: >-
+          Ship a runtime-config.js placeholder and make the image compatible
+          with an arbitrary OpenShift UID. Must match the value used in
+          bundle-app-npm-ci.yaml.
+        required: false
+        type: boolean
+        default: false
+      node-version:
+        description: Node.js version used to build the app.
+        required: false
+        type: string
+        default: 24.x
+      registry:
+        description: Container registry to push the released image to.
+        required: false
+        type: string
+        default: ghcr.io
     secrets:
       PACKAGES_RW_ACTOR:
         required: true
@@ -10,9 +33,9 @@ on:
 
 jobs:
   call-app-generic-conventional-release:
-    if: |
-      ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     uses: Forsakringskassan/.github/.github/workflows/generic-conventional-release.yaml@main
+
   call-app-npm-docker:
     needs: call-app-generic-conventional-release
     if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
@@ -20,13 +43,19 @@ jobs:
     with:
       version: ${{ needs.call-app-generic-conventional-release.outputs.current-version }}
       release: true
+      runtime-env: ${{ inputs.runtime-env }}
+      registry: ${{ inputs.registry }}
+      node-version: ${{ inputs.node-version }}
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+
   call-npm-ghpages-app:
+    needs: call-app-generic-conventional-release
     if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
     uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
+
   publish-release:
+    needs: [call-app-generic-conventional-release, call-app-npm-docker]
     if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
-    needs: call-app-npm-docker
     uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main

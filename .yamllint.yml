@@ -1,0 +1,19 @@
+---
+extends: default
+
+rules:
+  line-length:
+    max: 100
+    level: warning
+    allow-non-breakable-inline-mappings: true
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  trailing-spaces: disable
+  document-start:
+    present: true
+  comments:
+    min-spaces-from-content: 2
+  truthy:
+    # GitHub Actions workflows are keyed on "on:".
+    allowed-values: ["true", "false", "on"]

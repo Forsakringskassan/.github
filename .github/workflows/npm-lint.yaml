@@ -1,6 +1,32 @@
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# See docs/internals.md.
 name: NPM Lint
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version to lint with.
+        required: false
+        type: string
+        default: 24.x
+      build-command:
+        description: Command used to build before linting.
+        required: false
+        type: string
+        default: npm run --if-present build
+      linter:
+        description: >-
+          How Prettier and ESLint are invoked. "npm-scripts" runs the
+          `prettier:check` and `eslint` scripts from package.json (skipped when
+          absent). "fk-actions" runs the shared Forsakringskassan/prettier-config
+          and Forsakringskassan/eslint-config actions, which always run and do
+          not require the repository to declare the scripts.
+        required: false
+        type: string
+        default: npm-scripts
 
 permissions:
   contents: read
@@ -11,23 +37,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
       - name: Set Node Version
         uses: actions/setup-node@v7
         with:
-          node-version: 24.x
+          node-version: ${{ inputs.node-version }}
           cache: "npm"
+
       - name: Install dependencies
         run: npm ci
+
       - name: Build
-        run: npm run build
-      - name: Prettier
+        run: ${{ inputs.build-command }}
+
+      - name: Prettier (npm script)
+        if: inputs.linter == 'npm-scripts'
         run: npm run prettier:check --if-present
-      - name: ESLint
-        if: success() || failure()
+
+      - name: Prettier (shared config)
+        if: inputs.linter == 'fk-actions'
+        uses: Forsakringskassan/prettier-config@v3.7.9
+
+      - name: ESLint (npm script)
+        if: inputs.linter == 'npm-scripts' && (success() || failure())
         run: npm run eslint --if-present -- --max-warnings 0 || false
+
+      - name: ESLint (shared config)
+        if: inputs.linter == 'fk-actions' && (success() || failure())
+        uses: Forsakringskassan/eslint-config@v15.10.0
+
       - name: HTML Validate
         if: success() || failure()
         run: npm run html-validate --if-present -- --max-warnings 0 || false
+
       - name: Stylelint
         if: success() || failure()
         run: npm run stylelint --if-present -- --max-warnings 0

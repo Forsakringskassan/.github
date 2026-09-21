@@ -1,15 +1,90 @@
+---
+# PUBLIC API.
+# Repo kind: NPM library / tooling package published to a registry.
+# Companion release bundle: bundle-npm-release.yaml
 name: Bundle NPM CI
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      node-versions:
+        description: >-
+          JSON array of Node.js versions to build and test against,
+          e.g. '["22.x", "24.x"]'.
+        required: false
+        type: string
+        default: '["24.x"]'
+      build-command:
+        description: Command used to build.
+        required: false
+        type: string
+        default: npm run --if-present build
+      test-command:
+        description: Command used to run tests.
+        required: false
+        type: string
+        default: npm run --if-present test
+      linter:
+        description: >-
+          "npm-scripts" runs the prettier:check / eslint scripts from
+          package.json, "fk-actions" runs the shared Forsakringskassan
+          prettier-config and eslint-config actions.
+        required: false
+        type: string
+        default: npm-scripts
+      npm-pkg-lint:
+        description: Run npm-pkg-lint on the published package(s).
+        required: false
+        type: boolean
+        default: true
+      npm-pkg-lint-folders:
+        description: >-
+          Space separated list of package folders to check, e.g. `packages/*`.
+          The default `.` checks the repository root package.
+        required: false
+        type: string
+        default: "."
+      npm-pkg-lint-allow-dependencies:
+        description: Comma separated dependencies npm-pkg-lint may ignore.
+        required: false
+        type: string
+        default: ""
+      npm-pkg-lint-build:
+        description: >-
+          npm script npm-pkg-lint runs before packing, or "false" to skip it.
+        required: false
+        type: string
+        default: build
 
 jobs:
   call-npm-ci:
     uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
-  call-npm-ghpages-docs:
-    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-docs.yaml@main
+    with:
+      node-versions: ${{ inputs.node-versions }}
+      build-command: ${{ inputs.build-command }}
+      test-command: ${{ inputs.test-command }}
+
   call-npm-lint:
     uses: Forsakringskassan/.github/.github/workflows/npm-lint.yaml@main
+    with:
+      node-version: ${{ fromJSON(inputs.node-versions)[0] }}
+      build-command: ${{ inputs.build-command }}
+      linter: ${{ inputs.linter }}
+
+  call-npm-pkg-lint:
+    if: inputs.npm-pkg-lint
+    uses: Forsakringskassan/.github/.github/workflows/npm-pkg-lint.yaml@main
+    with:
+      node-version: ${{ fromJSON(inputs.node-versions)[0] }}
+      folders: ${{ inputs.npm-pkg-lint-folders }}
+      allow-dependencies: ${{ inputs.npm-pkg-lint-allow-dependencies }}
+      build: ${{ inputs.npm-pkg-lint-build }}
+
+  call-npm-ghpages-docs:
+    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-docs.yaml@main
+
   call-pr-preview:
     uses: Forsakringskassan/.github/.github/workflows/npm-pr-preview.yaml@main
+
   call-pnr-scan:
     uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main

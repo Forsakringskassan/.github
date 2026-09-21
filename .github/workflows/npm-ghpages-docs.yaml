@@ -1,3 +1,7 @@
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# See docs/internals.md.
 name: NPM GH-Pages Docs
 concurrency: deploy-${{ github.ref }}
 

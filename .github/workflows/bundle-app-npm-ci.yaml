@@ -1,7 +1,42 @@
+---
+# PUBLIC API.
+# Repo kind: web application built with npm and shipped as a Docker image.
+# Companion release bundle: bundle-app-npm-release.yaml
+#
+# Set `runtime-env: true` for applications that read their configuration from
+# a runtime-config.js injected by a Kubernetes/OpenShift ConfigMap.
 name: Bundle App NPM CI
 
 on:
   workflow_call:
+    inputs:
+      runtime-env:
+        description: >-
+          Ship a runtime-config.js placeholder and make the image compatible
+          with an arbitrary OpenShift UID.
+        required: false
+        type: boolean
+        default: false
+      node-versions:
+        description: JSON array of Node.js versions to build and test against.
+        required: false
+        type: string
+        default: '["24.x"]'
+      build-command:
+        description: Command used to build.
+        required: false
+        type: string
+        default: npm run --if-present build
+      test-command:
+        description: Command used to run tests.
+        required: false
+        type: string
+        default: npm run --if-present test
+      registry:
+        description: Container registry to push the snapshot image to.
+        required: false
+        type: string
+        default: ghcr.io
     secrets:
       PACKAGES_RW_ACTOR:
         required: true
@@ -11,19 +46,29 @@ on:
 jobs:
   call-npm-ci:
     uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
+    with:
+      node-versions: ${{ inputs.node-versions }}
+      build-command: ${{ inputs.build-command }}
+      test-command: ${{ inputs.test-command }}
+
   call-app-npm-docker:
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     needs: call-npm-ci
     uses: Forsakringskassan/.github/.github/workflows/app-npm-docker.yaml@main
     with:
       release: false
       version: snapshot
+      runtime-env: ${{ inputs.runtime-env }}
+      registry: ${{ inputs.registry }}
+      node-version: ${{ fromJSON(inputs.node-versions)[0] }}
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+
   call-npm-ghpages-app:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     needs: call-app-npm-docker
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
+
   call-pnr-scan:
     uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main

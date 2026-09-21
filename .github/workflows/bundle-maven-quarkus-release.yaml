@@ -1,3 +1,7 @@
+---
+# PUBLIC API.
+# Repo kind: Quarkus service built with Maven and shipped as a Docker image.
+# Companion CI bundle: bundle-maven-quarkus-ci.yaml
 name: Bundle Maven Quarkus Release
 
 on:

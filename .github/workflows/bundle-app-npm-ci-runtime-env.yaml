@@ -1,4 +1,8 @@
-name: Bundle App NPM CI with runtime-env
+---
+# PUBLIC API -- DEPRECATED.
+# Use bundle-app-npm-ci.yaml with `runtime-env: true` instead.
+# Kept so that repositories can migrate on their own schedule.
+name: Bundle App NPM CI with runtime-env (deprecated)
 
 on:
   workflow_call:
@@ -9,21 +13,10 @@ on:
         required: true
 
 jobs:
-  call-npm-ci:
-    uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
-  call-app-npm-docker:
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
-    needs: call-npm-ci
-    uses: Forsakringskassan/.github/.github/workflows/app-npm-docker-runtime-env.yaml@main
+  call-bundle-app-npm-ci:
+    uses: Forsakringskassan/.github/.github/workflows/bundle-app-npm-ci.yaml@main
     with:
-      release: false
-      version: snapshot
+      runtime-env: true
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
-  call-npm-ghpages-app:
-    needs: call-app-npm-docker
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
-    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
-  call-pnr-scan:
-    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main

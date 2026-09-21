@@ -1,17 +1,48 @@
+---
+# PUBLIC API.
+# Repo kind: NPM library / tooling package published to a registry.
+# Companion CI bundle: bundle-npm-ci.yaml
 name: Bundle NPM Release
 
 on:
   workflow_call:
+    inputs:
+      app-id:
+        description: >-
+          App id of the GitHub App used to push the release commit and tag.
+          Normally `${{ vars.RELEASE_APP_ID }}`.
+        required: true
+        type: string
+      config-preset:
+        description: semantic-release shareable config to use.
+        required: false
+        type: string
+      build-command:
+        description: Build command run before starting the release.
+        required: false
+        type: string
+        default: npm run --if-present build
+      node-version:
+        description: Node.js version used to build and publish.
+        required: false
+        type: string
+        default: 24.x
     secrets:
-      RELEASE_APP_KEY:
+      app-key:
         required: true
 
 jobs:
   call-npm-release:
     uses: Forsakringskassan/.github/.github/workflows/npm-release.yaml@main
+    with:
+      app-id: ${{ inputs.app-id }}
+      config-preset: ${{ inputs.config-preset }}
+      build-command: ${{ inputs.build-command }}
+      node-version: ${{ inputs.node-version }}
     secrets:
-      RELEASE_APP_KEY: ${{ secrets.RELEASE_APP_KEY }}
+      app-key: ${{ secrets.app-key }}
+
+  # Self-skips unless the workflow was triggered by a v* tag push and the
+  # repository has a build:docs script.
   call-npm-ghpages-docs:
     uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-docs.yaml@main
-  call-npm-lint:
-    uses: Forsakringskassan/.github/.github/workflows/npm-lint.yaml@main

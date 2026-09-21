@@ -3,7 +3,10 @@
   "extends": ["config:recommended"],
   "enabledManagers": ["github-actions"],
   "github-actions": {
-    "managerFilePatterns": ["/.github/workflows/.*\\.ya?ml$/"]
+    "managerFilePatterns": [
+      "/.github/workflows/.*\\.ya?ml$/",
+      "/actions/.*/action\\.ya?ml$/"
+    ]
   },
   "automerge": true,
   "automergeType": "pr",

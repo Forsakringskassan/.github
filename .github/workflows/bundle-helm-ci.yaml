@@ -1,3 +1,7 @@
+---
+# PUBLIC API.
+# Repo kind: Helm chart. There is no release bundle for this kind: charts are
+# deployed from the cluster repositories, not published from CI.
 name: Bundle Helm CI
 
 on:

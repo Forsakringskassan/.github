@@ -1,0 +1,31 @@
+---
+name: Personnummer scan
+description: >-
+  Fails the build if pnr-scanner finds anything that looks like a Swedish
+  personnummer in the checked out working tree. Use the reusable workflow
+  `pnr-scanner.yaml` when you want this as a separate job; use this action when
+  you need it as a step inside a job you already have.
+
+inputs:
+  path:
+    description: Path to scan.
+    required: false
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - name: pnr-scanner
+      shell: bash
+      env:
+        SCAN_PATH: ${{ inputs.path }}
+      run: |
+        set -uo pipefail
+        errors=$(npx --yes pnr-scanner "$SCAN_PATH" 2>/dev/null | grep -cE "^    " || true)
+        if [ "$errors" != "0" ]; then
+          npx --yes pnr-scanner "$SCAN_PATH" || true
+          echo "::error::Found $errors potential personnummer."
+          echo "Run 'npx pnr-scanner $SCAN_PATH' locally for more information."
+          exit 1
+        fi
+        echo "No potential personnummer found in $SCAN_PATH"

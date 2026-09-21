@@ -1,0 +1,50 @@
+---
+# Runs in THIS repository only -- it is not a reusable workflow.
+#
+# Guards the CI contract: the workflows here are what every other repository
+# in the organisation builds on, so a mistake lands everywhere at once.
+name: Lint
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  yamllint:
+    name: yamllint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint YAML
+        run: yamllint -c .yamllint.yml .github/workflows actions
+
+  contract:
+    name: Workflow contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Check workflow contract
+        run: python3 scripts/check_workflow_contract.py

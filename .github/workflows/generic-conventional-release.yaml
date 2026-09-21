@@ -1,11 +1,22 @@
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# See docs/internals.md.
+#
+# Decides the next version from the conventional commits since the highest
+# existing tag, writes CHANGELOG.md, commits and tags. Reports back whether
+# there was anything to release, so that the calling bundle can skip the rest
+# of the release pipeline.
 name: Generic Conventional Release
 
 on:
   workflow_call:
     outputs:
       current-version:
+        description: The version that was tagged, or the existing version.
         value: ${{ jobs.generic-conventional-release.outputs.current-version }}
       is-new-version:
+        description: '"true" when a new version was tagged.'
         value: ${{ jobs.generic-conventional-release.outputs.is-new-version }}
 
 jobs:
@@ -42,44 +53,50 @@ jobs:
         run: |
           git config --global user.name "Github Actions"
           git config --global user.email "nobody@fk.se"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote set-url origin \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
-      - name: Version and Changelog
+      - name: Determine version
         id: version
         run: |
-          highestVersion=$(npx git-changelog-command-line \
-            --print-highest-version)
+          set -euo pipefail
 
-          highestVersionTag=$(npx git-changelog-command-line \
-            --print-highest-version-tag)
-
+          highestVersion=$(npx git-changelog-command-line --print-highest-version)
+          highestVersionTag=$(npx git-changelog-command-line --print-highest-version-tag)
           currentVersion=$(npx git-changelog-command-line \
             --patch-version-pattern "^[Ff]ix|[Cc]hore\\(deps\\).*" \
             --print-current-version)
 
           if [ -z "$highestVersionTag" ]; then
-            echo "😀 This is the first version in the repo, using 0.0.1 as version"
+            echo "This is the first version in the repo, using 0.0.1 as version"
             currentVersion=0.0.1
-            echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
-            echo "is-new-version=true" >> $GITHUB_OUTPUT
-          elif [ "$currentVersion" == "$highestVersion" ]; then
-              echo "❌ No changes made that can be released. See https://www.conventionalcommits.org/en/v1.0.0/"
-              echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
-              echo "is-new-version=false" >> $GITHUB_OUTPUT
-              exit 0
+          elif [ "$currentVersion" = "$highestVersion" ]; then
+            echo "No changes made that can be released."
+            echo "See https://www.conventionalcommits.org/en/v1.0.0/"
+            echo "current-version=$currentVersion" >> "$GITHUB_OUTPUT"
+            echo "is-new-version=false" >> "$GITHUB_OUTPUT"
+            exit 0
           else
-              echo "✅ Changes detected and a new $currentVersion release can be made"
-              echo "current-version=$currentVersion" >> $GITHUB_OUTPUT
-              echo "is-new-version=true" >> $GITHUB_OUTPUT
+            echo "Changes detected, releasing $currentVersion"
           fi
 
-          git tag $currentVersion
+          echo "current-version=$currentVersion" >> "$GITHUB_OUTPUT"
+          echo "is-new-version=true" >> "$GITHUB_OUTPUT"
+
+      - name: Tag, changelog and push
+        if: steps.version.outputs.is-new-version == 'true'
+        env:
+          CURRENT_VERSION: ${{ steps.version.outputs.current-version }}
+        run: |
+          set -euo pipefail
+
+          git tag "$CURRENT_VERSION"
 
           npx git-changelog-command-line \
             --ignore-pattern "(.*maven-release-plugin|^Merge pull request).*" \
             -of CHANGELOG.md
 
           git add CHANGELOG.md
-          git commit -a -m "chore: updating changelog" || echo "No changes to commit"|| echo "No changes to commit"
+          git commit -a -m "chore: updating changelog" || echo "No changes to commit"
           git push
           git push --tags

@@ -1,7 +1,7 @@
-#
-# Använd bundle-maven-quarkus direkt istället!
-# Har kvar den är bara för att inte behöva ändra så mycket.
-#
+---
+# PUBLIC API -- DEPRECATED ALIAS.
+# Use bundle-maven-quarkus-release.yaml directly instead. Kept so that the
+# repositories still pointing here keep working while they migrate.
 name: Bundle Maven Release
 
 on:

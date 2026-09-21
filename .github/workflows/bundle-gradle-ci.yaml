@@ -1,3 +1,7 @@
+---
+# PUBLIC API.
+# Repo kind: Gradle library or API contract (openapi / asyncapi / jar).
+# Companion release bundle: bundle-gradle-release.yaml
 name: Bundle Gradle CI
 
 on:

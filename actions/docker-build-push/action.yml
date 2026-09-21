@@ -1,0 +1,124 @@
+---
+name: Build and push multi-arch Docker image
+description: >-
+  Builds a Docker context for every architecture in `archs`, pushes one image
+  per architecture and assembles the multi-arch manifests. A `snapshot`
+  manifest is always produced; when `release` is true the `<version>` and
+  `latest` manifests are produced as well.
+
+  The action expects a ready-to-build Docker context (a directory containing a
+  Dockerfile) and passes NEXT_VERSION, GIT_COMMIT, IMAGE_NAME and BUILD_DATE as
+  build args, which the Dockerfiles in this repository turn into environment
+  variables so that a running container can report what it is.
+
+inputs:
+  image:
+    description: >-
+      Fully qualified image name without tag,
+      e.g. ghcr.io/forsakringskassan/my-app.
+    required: true
+  version:
+    description: Version to tag the image with when `release` is true.
+    required: true
+  release:
+    description: >-
+      "true" to also push the `<version>` and `latest` tags. Snapshot tags are
+      always pushed.
+    required: false
+    default: "false"
+  context:
+    description: Path to the Docker build context.
+    required: false
+    default: docker
+  archs:
+    description: Space separated list of architectures to build.
+    required: false
+    default: amd64 arm64
+  description:
+    description: Value for the org.opencontainers.image.description label.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v4
+
+    - name: Build and push per-arch images
+      shell: bash
+      env:
+        IMAGE_BASE: ${{ inputs.image }}
+        NEXT_VERSION: ${{ inputs.version }}
+        RELEASE: ${{ inputs.release }}
+        CONTEXT: ${{ inputs.context }}
+        ARCHS: ${{ inputs.archs }}
+        DESCRIPTION: ${{ inputs.description }}
+        SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+      run: |
+        set -euo pipefail
+        GIT_COMMIT=$(git rev-parse HEAD)
+        BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+        build() {
+          local arch="$1"
+          shift
+          docker build \
+            --platform "linux/$arch" \
+            --build-arg "NEXT_VERSION=$NEXT_VERSION" \
+            --build-arg "GIT_COMMIT=$GIT_COMMIT" \
+            --build-arg "IMAGE_NAME=$IMAGE_BASE" \
+            --build-arg "BUILD_DATE=$BUILD_DATE" \
+            --label "org.opencontainers.image.source=$SOURCE_URL" \
+            --label "org.opencontainers.image.description=$DESCRIPTION" \
+            --label "org.opencontainers.image.revision=$GIT_COMMIT" \
+            --label "org.opencontainers.image.version=$NEXT_VERSION" \
+            --label "org.opencontainers.image.created=$BUILD_DATE" \
+            --label "org.opencontainers.image.licenses=MIT" \
+            "$@" \
+            "$CONTEXT"
+        }
+
+        for arch in $ARCHS; do
+          build "$arch" -t "$IMAGE_BASE:$arch-snapshot"
+          docker push "$IMAGE_BASE:$arch-snapshot"
+
+          if [ "$RELEASE" = "true" ]; then
+            build "$arch" \
+              -t "$IMAGE_BASE:$arch-$NEXT_VERSION" \
+              -t "$IMAGE_BASE:$arch-latest"
+            docker push "$IMAGE_BASE:$arch-$NEXT_VERSION"
+            docker push "$IMAGE_BASE:$arch-latest"
+          fi
+        done
+
+    - name: Create and push multi-arch manifests
+      shell: bash
+      env:
+        IMAGE_BASE: ${{ inputs.image }}
+        NEXT_VERSION: ${{ inputs.version }}
+        RELEASE: ${{ inputs.release }}
+        ARCHS: ${{ inputs.archs }}
+      run: |
+        set -euo pipefail
+
+        manifest() {
+          local tag="$1" arch_suffix="$2"
+          local refs=()
+          for arch in $ARCHS; do
+            refs+=("$IMAGE_BASE:$arch-$arch_suffix")
+          done
+          docker manifest create "$IMAGE_BASE:$tag" "${refs[@]}"
+          for arch in $ARCHS; do
+            docker manifest annotate "$IMAGE_BASE:$tag" \
+              "$IMAGE_BASE:$arch-$arch_suffix" --arch "$arch" --os linux
+          done
+          docker manifest push "$IMAGE_BASE:$tag"
+        }
+
+        if [ "$RELEASE" = "true" ]; then
+          manifest "$NEXT_VERSION" "$NEXT_VERSION"
+          manifest latest "$NEXT_VERSION"
+        fi
+
+        manifest snapshot snapshot

@@ -1,18 +1,36 @@
-name: Build Java Maven app into Docker image
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# See docs/internals.md.
+name: Build Quarkus app into Docker image
 
 on:
   workflow_call:
     inputs:
+      version:
+        description: Version to set on the artifact and tag the image with.
+        required: true
+        type: string
+      release:
+        description: >-
+          Push the `<version>` and `latest` tags in addition to `snapshot`.
+        required: true
+        type: boolean
       registry:
+        description: Container registry to push to.
         required: false
         type: string
         default: ghcr.io
-      release:
-        required: true
-        type: boolean
-      version:
-        required: true
+      java-version:
+        description: Java version used to build the app.
+        required: false
         type: string
+        default: "25"
+      java-distribution:
+        description: Java distribution used to build the app.
+        required: false
+        type: string
+        default: temurin
     secrets:
       PACKAGES_RW_ACTOR:
         required: true
@@ -23,7 +41,8 @@ jobs:
   build-and-push-docker:
     runs-on: ubuntu-latest
     env:
-      ARCHS: "amd64 arm64"
+      MAVEN_USERNAME: ${{ secrets.PACKAGES_RW_ACTOR }}
+      MAVEN_PASSWORD: ${{ secrets.PACKAGES_RW_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -32,78 +51,56 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-
       - name: Setup Java
         uses: actions/setup-java@v6
         with:
-          java-version: 25.0.4+101.0.LTS
-          distribution: "temurin"
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
           cache: maven
-          server-id: github--Forsakringskassan--repository
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
 
       - name: Create Maven settings.xml
-        run: |
-          mkdir -p "$RUNNER_TEMP/maven"
-          cat <<'EOF' > "$RUNNER_TEMP/maven/settings.xml"
-          <?xml version="1.0" encoding="UTF-8"?>
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
-                                        http://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>github--Forsakringskassan--repository</id>
-                <username>${env.GITHUB_ACTOR}</username>
-                <password>${env.GITHUB_TOKEN}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
+        uses: Forsakringskassan/.github/actions/maven-settings@main
 
       - name: Get artifact info
         id: artifact
         run: |
-          ARTIFACT_ID=$(./mvnw -s $RUNNER_TEMP/maven/settings.xml help:evaluate -Dexpression=project.artifactId -q -DforceStdout)
-          echo "name=$ARTIFACT_ID" >> $GITHUB_OUTPUT
-          echo "📦 Artifact ID: $ARTIFACT_ID"
-        env:
-          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          set -euo pipefail
+          artifact_id=$(./mvnw -s "$MAVEN_SETTINGS" -ntp \
+            help:evaluate -Dexpression=project.artifactId -q -DforceStdout)
+          echo "name=$artifact_id" >> "$GITHUB_OUTPUT"
+          echo "Artifact ID: $artifact_id"
 
       - name: Build project
         run: |
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C versions:set -DnewVersion=${{ inputs.version }}
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C clean package -DskipTests
-        env:
-          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          set -euo pipefail
+          ./mvnw -s "$MAVEN_SETTINGS" -ntp -T 1C \
+            versions:set -DnewVersion=${{ inputs.version }}
+          ./mvnw -s "$MAVEN_SETTINGS" -ntp -T 1C clean package -DskipTests
 
       - name: Prepare Docker context
         run: |
+          set -euo pipefail
           mkdir docker
-          # Find the quarkus app directory (could be named differently)
-          QUARKUS_APP_DIR=$(find target -name "*-app" -type d | head -1)
-          if [ -z "$QUARKUS_APP_DIR" ]; then
-            echo "No Quarkus app directory found in target/"
+          # The Quarkus fast-jar directory is named after the artifact, so
+          # find it rather than assuming a name.
+          quarkus_app_dir=$(find target -name "*-app" -type d | head -1)
+          if [ -z "$quarkus_app_dir" ]; then
+            echo "::error::No Quarkus app directory found in target/"
             exit 1
           fi
-          echo "Found Quarkus app: $QUARKUS_APP_DIR"
-          cp "$QUARKUS_APP_DIR" docker/app -r
-          # Create Dockerfile for Quarkus app
+          echo "Found Quarkus app: $quarkus_app_dir"
+          cp -r "$quarkus_app_dir" docker/app
+
           cat > docker/Dockerfile <<'EOF'
           FROM eclipse-temurin:25-jre
 
           ENV LANGUAGE='en_US:en'
 
-          # Copy the Quarkus app
           COPY app/lib/ /deployments/lib/
           COPY app/*.jar /deployments/
           COPY app/app/ /deployments/app/
           COPY app/quarkus/ /deployments/quarkus/
 
-          # Pass version info and image name as build args
           ARG NEXT_VERSION
           ARG GIT_COMMIT
           ARG IMAGE_NAME
@@ -113,84 +110,24 @@ jobs:
           ENV IMAGE_NAME=$IMAGE_NAME
           ENV BUILD_DATE=$BUILD_DATE
 
-          # Print info on container start
           USER 185
           EXPOSE 8080
 
-          # Custom entrypoint that prints info then starts the app
-          ENTRYPOINT ["sh", "-c", "echo \"Starting container: $IMAGE_NAME\" && echo \"Version: $NEXT_VERSION\" && echo \"Commit: $GIT_COMMIT\" && echo \"Build date: $BUILD_DATE\" && echo \"\" && echo \"\" && java -jar /deployments/quarkus-run.jar"]
+          ENTRYPOINT ["sh", "-c", "echo \"Starting container: $IMAGE_NAME\" && echo \"Version: $NEXT_VERSION\" && echo \"Commit: $GIT_COMMIT\" && echo \"Build date: $BUILD_DATE\" && echo \"\" && exec java -jar /deployments/quarkus-run.jar"]
           EOF
 
       - name: Log in to registry
-        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Build and push per-arch Docker images
         run: |
-          IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.artifact.outputs.name }}"
-          echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
-          
-          GIT_COMMIT=$(git rev-parse HEAD)
-          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          NEXT_VERSION="${{ inputs.version }}"
-          
-          for ARCH in $ARCHS; do
-            # Build and push snapshot
-            docker build \
-              --platform linux/$ARCH \
-              --build-arg NEXT_VERSION=$NEXT_VERSION \
-              --build-arg GIT_COMMIT=$GIT_COMMIT \
-              --build-arg IMAGE_NAME=$IMAGE_BASE \
-              --build-arg BUILD_DATE="$BUILD_DATE" \
-              --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
-              --label "org.opencontainers.image.description=Quarkus application: ${{ steps.artifact.outputs.name }}" \
-              --label "org.opencontainers.image.licenses=MIT" \
-              -t "$IMAGE_BASE:$ARCH-snapshot" \
-              docker
-            docker push "$IMAGE_BASE:$ARCH-snapshot"
-          
-            # Build and push release tags (only if release=true)
-            if [ "${{ inputs.release }}" = "true" ]; then
-              docker build \
-                --platform linux/$ARCH \
-                --build-arg NEXT_VERSION=$NEXT_VERSION \
-                --build-arg GIT_COMMIT=$GIT_COMMIT \
-                --build-arg IMAGE_NAME=$IMAGE_BASE \
-                --build-arg BUILD_DATE="$BUILD_DATE" \
-                --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
-                --label "org.opencontainers.image.description=Quarkus application: ${{ steps.artifact.outputs.name }}" \
-                --label "org.opencontainers.image.licenses=MIT" \
-                -t "$IMAGE_BASE:$ARCH-$NEXT_VERSION" \
-                -t "$IMAGE_BASE:$ARCH-latest" \
-                docker
-              docker push "$IMAGE_BASE:$ARCH-$NEXT_VERSION"
-              docker push "$IMAGE_BASE:$ARCH-latest"
-            fi
-          done
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          echo "${{ secrets.PACKAGES_RW_TOKEN }}" \
+            | docker login "${{ inputs.registry }}" \
+                -u "${{ secrets.PACKAGES_RW_ACTOR }}" --password-stdin
 
-      - name: Create and push multi-arch manifests
-        run: |
-          if [ "${{ inputs.release }}" = "true" ]; then
-            # Release manifests
-            docker manifest create "$IMAGE_BASE:latest" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-${{ inputs.version }} "; done)
-            docker manifest create "$IMAGE_BASE:${{ inputs.version }}" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-${{ inputs.version }} "; done)
-            for ARCH in $ARCHS; do
-              docker manifest annotate "$IMAGE_BASE:latest" "$IMAGE_BASE:$ARCH-${{ inputs.version }}" --arch $ARCH --os linux
-              docker manifest annotate "$IMAGE_BASE:${{ inputs.version }}" "$IMAGE_BASE:$ARCH-${{ inputs.version }}" --arch $ARCH --os linux
-            done
-            docker manifest push "$IMAGE_BASE:latest"
-            docker manifest push "$IMAGE_BASE:${{ inputs.version }}"
-          fi
-          
-          # Snapshot manifest
-          docker manifest create "$IMAGE_BASE:snapshot" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-snapshot "; done)
-          for ARCH in $ARCHS; do
-            docker manifest annotate "$IMAGE_BASE:snapshot" "$IMAGE_BASE:$ARCH-snapshot" --arch $ARCH --os linux
-          done
-          docker manifest push "$IMAGE_BASE:snapshot"
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+      - name: Build and push image
+        uses: Forsakringskassan/.github/actions/docker-build-push@main
+        with:
+          image: >-
+            ${{ inputs.registry }}/forsakringskassan/${{ steps.artifact.outputs.name }}
+          version: ${{ inputs.version }}
+          release: ${{ inputs.release }}
+          context: docker
+          description: "Quarkus application: ${{ steps.artifact.outputs.name }}"

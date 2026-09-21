@@ -1,18 +1,31 @@
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call bundle-npm-release.yaml instead.
+# See docs/internals.md.
 name: NPM Release
 
 on:
   workflow_call:
     inputs:
       app-id:
+        description: >-
+          App id of the GitHub App used to push the release commit and tag.
+          Normally `${{ vars.RELEASE_APP_ID }}`.
         required: true
         type: string
       config-preset:
+        description: semantic-release shareable config to use.
         required: false
         type: string
       build-command:
-        description: Build command run before starting the release
+        description: Build command run before starting the release.
         required: false
         default: "npm run --if-present build"
+        type: string
+      node-version:
+        description: Node.js version used to build and publish.
+        required: false
+        default: "24.x"
         type: string
     secrets:
       app-key:
@@ -34,20 +47,25 @@ jobs:
         with:
           app-id: ${{ inputs.app-id }}
           private-key: ${{ secrets.app-key }}
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24.x
+          node-version: ${{ inputs.node-version }}
           cache: "npm"
+
       - name: Install dependencies
         run: npm ci
+
       - name: Build
         run: ${{ inputs.build-command }}
+
       - name: Release
         uses: Forsakringskassan/semantic-release-config@main
         with:

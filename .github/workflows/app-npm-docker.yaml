@@ -1,18 +1,39 @@
-name: Build app into Docker image
+---
+# INTERNAL building block -- not part of the public API.
+# Repositories should call one of the bundle-*.yaml workflows instead.
+# See docs/internals.md.
+name: Build NPM app into Docker image
 
 on:
   workflow_call:
     inputs:
       version:
+        description: Version to tag the image with when `release` is true.
         required: true
         type: string
+      release:
+        description: >-
+          Push the `<version>` and `latest` tags in addition to `snapshot`.
+        required: true
+        type: boolean
       registry:
+        description: Container registry to push to.
         required: false
         type: string
         default: ghcr.io
-      release:
-        required: true
+      runtime-env:
+        description: >-
+          Ship a `runtime-config.js` placeholder and make the web root writable
+          by an arbitrary OpenShift UID, so that configuration can be injected
+          at runtime through a mounted ConfigMap.
+        required: false
         type: boolean
+        default: false
+      node-version:
+        description: Node.js version used to build the app.
+        required: false
+        type: string
+        default: 24.x
     secrets:
       PACKAGES_RW_ACTOR:
         required: true
@@ -22,21 +43,18 @@ on:
 jobs:
   build-and-push-docker:
     runs-on: ubuntu-latest
-    env:
-      ARCHS: "amd64 arm64"
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
           fetch-tags: true
-          ref: ${{ github.ref_name }}
 
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: ${{ inputs.node-version }}
           cache: npm
 
       - name: Install dependencies
@@ -45,27 +63,78 @@ jobs:
       - name: Get and sanitize package name
         id: pkg
         run: |
-          RAW_NAME=$(node -p "require('./package.json').name")
-          CLEAN_NAME=$(echo "$RAW_NAME" | tr -d '@' | tr '/' '-' | tr '/' '--')
-          echo "name=$CLEAN_NAME" >> $GITHUB_OUTPUT
-          echo "📦 Package name: $RAW_NAME -> $CLEAN_NAME"
+          set -euo pipefail
+          raw_name=$(node -p "require('./package.json').name")
+          clean_name=$(echo "$raw_name" | tr -d '@' | tr '/' '-')
+          echo "name=$clean_name" >> "$GITHUB_OUTPUT"
+          echo "Package name: $raw_name -> $clean_name"
 
       - name: Build project
         run: npm run build
         env:
           APP_BASE_PATH: false
 
-      - name: Prepare Docker context
+      - name: Create runtime-config.js placeholder
+        if: inputs.runtime-env
         run: |
+          cat > dist/runtime-config.js <<'EOF'
+          // Runtime environment -- override via Kubernetes ConfigMap.
+          window.__env = {};
+          EOF
+
+      - name: Prepare Docker context
+        env:
+          RUNTIME_ENV: ${{ inputs.runtime-env }}
+        run: |
+          set -euo pipefail
           mkdir docker
           cp -r dist docker/
+
+          # Apache runs as a non-root user. With runtime-env the web root is
+          # made group-writable for gid 0 instead of owned by www-data, which
+          # is what OpenShift needs when it assigns an arbitrary UID.
+          if [ "$RUNTIME_ENV" = "true" ]; then
+            cat > docker/permissions.txt <<'EOF'
+          RUN chgrp -R 0 /usr/local/apache2/htdocs && \
+              chmod -R g=u /usr/local/apache2/htdocs && \
+              usermod -a -G 0 www-data
+          EOF
+          else
+            cat > docker/permissions.txt <<'EOF'
+          RUN chown -R www-data:www-data /usr/local/apache2/htdocs && \
+              chmod -R 755 /usr/local/apache2/htdocs
+          EOF
+          fi
+
+          cat > docker/start-httpd.sh <<'EOF'
+          #!/bin/bash
+          PORT=${HTTPD_PORT:-8080}
+          cp /usr/local/apache2/conf/httpd.conf /tmp/httpd.conf
+          sed -i "s/Listen 80/Listen $PORT/" /tmp/httpd.conf
+          sed -i "s|ErrorLog logs/error_log|ErrorLog /tmp/apache2/logs/error_log|" /tmp/httpd.conf
+          sed -i "s|CustomLog logs/access_log|CustomLog /tmp/apache2/logs/access_log|" /tmp/httpd.conf
+          sed -i "s|#PidFile logs/httpd.pid|PidFile /tmp/apache2/run/httpd.pid|" /tmp/httpd.conf
+          echo "PidFile /tmp/apache2/run/httpd.pid" >> /tmp/httpd.conf
+          echo "ServerName localhost" >> /tmp/httpd.conf
+          echo "Starting container: $IMAGE_NAME"
+          echo "Version: $NEXT_VERSION"
+          echo "Commit: $GIT_COMMIT"
+          echo "Build date: $BUILD_DATE"
+          echo "Listening on port: $PORT"
+          echo ""
+          exec httpd -D FOREGROUND -f /tmp/httpd.conf
+          EOF
+
           cat > docker/Dockerfile <<'EOF'
           FROM httpd:latest
           USER 0
 
           RUN rm -rf /usr/local/apache2/htdocs/*
 
+          # Runtime configuration, when used, is injected by mounting a
+          # ConfigMap over /usr/local/apache2/htdocs/runtime-config.js
           COPY dist/ /usr/local/apache2/htdocs/
+          COPY start-httpd.sh /usr/local/bin/start-httpd.sh
 
           ARG NEXT_VERSION
           ARG GIT_COMMIT
@@ -75,101 +144,38 @@ jobs:
           ENV GIT_COMMIT=$GIT_COMMIT
           ENV IMAGE_NAME=$IMAGE_NAME
           ENV BUILD_DATE=$BUILD_DATE
-
           ENV HTTPD_PORT=8080
 
           RUN mkdir -p /tmp/apache2/logs /tmp/apache2/run && \
-              chown -R www-data:www-data /usr/local/apache2/htdocs /tmp/apache2 && \
-              chmod -R 755 /usr/local/apache2/htdocs && \
-              chmod -R 777 /tmp/apache2
-
-          RUN echo '#!/bin/bash' > /usr/local/bin/start-httpd.sh && \
-              echo 'PORT=${HTTPD_PORT:-8080}' >> /usr/local/bin/start-httpd.sh && \
-              echo 'cp /usr/local/apache2/conf/httpd.conf /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo 'sed -i "s/Listen 80/Listen $PORT/" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo 'sed -i "s|ErrorLog logs/error_log|ErrorLog /tmp/apache2/logs/error_log|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo 'sed -i "s|CustomLog logs/access_log|CustomLog /tmp/apache2/logs/access_log|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo 'sed -i "s|#PidFile logs/httpd.pid|PidFile /tmp/apache2/run/httpd.pid|" /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo "PidFile /tmp/apache2/run/httpd.pid" >> /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo "ServerName localhost" >> /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo "Starting container: $IMAGE_NAME"' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo "Version: $NEXT_VERSION"' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo "Commit: $GIT_COMMIT"' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo "Build date: $BUILD_DATE"' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo "Listening on port: $PORT"' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo ""' >> /usr/local/bin/start-httpd.sh && \
-              echo 'echo ""' >> /usr/local/bin/start-httpd.sh && \
-              echo 'httpd -D FOREGROUND -f /tmp/httpd.conf' >> /usr/local/bin/start-httpd.sh && \
+              chmod -R 777 /tmp/apache2 && \
               chmod +x /usr/local/bin/start-httpd.sh
+          EOF
+
+          cat docker/permissions.txt >> docker/Dockerfile
+          rm docker/permissions.txt
+
+          cat >> docker/Dockerfile <<'EOF'
 
           USER www-data
-
-          EXPOSE $HTTPD_PORT
-
+          EXPOSE 8080
           CMD ["/usr/local/bin/start-httpd.sh"]
           EOF
 
+          echo "--- generated Dockerfile ---"
+          cat docker/Dockerfile
+
       - name: Log in to registry
-        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Build and push per-arch Docker images
         run: |
-          IMAGE_BASE="${{ inputs.registry }}/forsakringskassan/${{ steps.pkg.outputs.name }}"
-          echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
-          GIT_COMMIT=$(git rev-parse HEAD)
-          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          NEXT_VERSION="${{ inputs.version }}"
+          echo "${{ secrets.PACKAGES_RW_TOKEN }}" \
+            | docker login "${{ inputs.registry }}" \
+                -u "${{ secrets.PACKAGES_RW_ACTOR }}" --password-stdin
 
-          for ARCH in $ARCHS; do
-            docker build \
-              --platform linux/$ARCH \
-              --build-arg NEXT_VERSION=$NEXT_VERSION \
-              --build-arg GIT_COMMIT=$GIT_COMMIT \
-              --build-arg IMAGE_NAME=$IMAGE_BASE \
-              --build-arg BUILD_DATE="$BUILD_DATE" \
-              --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
-              --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
-              --label "org.opencontainers.image.licenses=MIT" \
-              -t "$IMAGE_BASE:$ARCH-snapshot" \
-              docker
-            docker push "$IMAGE_BASE:$ARCH-snapshot"
-
-            if [ "${{ inputs.release }}" = "true" ]; then
-              docker build \
-                --platform linux/$ARCH \
-                --build-arg NEXT_VERSION=$NEXT_VERSION \
-                --build-arg GIT_COMMIT=$GIT_COMMIT \
-                --build-arg IMAGE_NAME=$IMAGE_BASE \
-                --build-arg BUILD_DATE="$BUILD_DATE" \
-                --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
-                --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
-                --label "org.opencontainers.image.licenses=MIT" \
-                -t "$IMAGE_BASE:$ARCH-$NEXT_VERSION" \
-                -t "$IMAGE_BASE:$ARCH-latest" \
-                docker
-              docker push "$IMAGE_BASE:$ARCH-$NEXT_VERSION"
-              docker push "$IMAGE_BASE:$ARCH-latest"
-            fi
-          done
-
-      - name: Create and push multi-arch manifests
-        run: |
-          if [ "${{ inputs.release }}" = "true" ]; then
-            docker manifest create "$IMAGE_BASE:latest" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-${{ inputs.version }} "; done)
-            docker manifest create "$IMAGE_BASE:${{ inputs.version }}" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-${{ inputs.version }} "; done)
-            for ARCH in $ARCHS; do
-              docker manifest annotate "$IMAGE_BASE:latest" "$IMAGE_BASE:$ARCH-${{ inputs.version }}" --arch $ARCH --os linux
-              docker manifest annotate "$IMAGE_BASE:${{ inputs.version }}" "$IMAGE_BASE:$ARCH-${{ inputs.version }}" --arch $ARCH --os linux
-            done
-            docker manifest push "$IMAGE_BASE:latest"
-            docker manifest push "$IMAGE_BASE:${{ inputs.version }}"
-          fi
-
-          docker manifest create "$IMAGE_BASE:snapshot" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-snapshot "; done)
-          for ARCH in $ARCHS; do
-            docker manifest annotate "$IMAGE_BASE:snapshot" "$IMAGE_BASE:$ARCH-snapshot" --arch $ARCH --os linux
-          done
-          docker manifest push "$IMAGE_BASE:snapshot"
+      - name: Build and push image
+        uses: Forsakringskassan/.github/actions/docker-build-push@main
+        with:
+          image: >-
+            ${{ inputs.registry }}/forsakringskassan/${{ steps.pkg.outputs.name }}
+          version: ${{ inputs.version }}
+          release: ${{ inputs.release }}
+          context: docker
+          description: "NPM application: ${{ steps.pkg.outputs.name }}"

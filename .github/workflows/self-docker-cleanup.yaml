@@ -1,3 +1,5 @@
+---
+# Runs in THIS repository only -- it is not a reusable workflow.
 name: Docker Cleanup
 
 on:

@@ -1,3 +1,7 @@
+---
+# PUBLIC API.
+# Repo kind: API contract built with Gradle and also published to npm.
+# Companion release bundle: bundle-api-npm-release.yaml
 name: Bundle API CI
 
 on:
