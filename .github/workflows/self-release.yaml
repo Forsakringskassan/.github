@@ -1,0 +1,54 @@
+---
+# Runs in THIS repository only. Not reusable.
+#
+# Cutting a version means publishing the draft that self-draft-release.yaml
+# keeps up to date. GitHub creates the tag at that moment, on a commit whose
+# bundles still reference the *previous* version's actions. This rewrites those
+# references and re-points the tag at the commit that does, so the bundles at
+# vX.Y.Z use the actions at vX.Y.Z.
+#
+# Until it has run, main references the last released version, which always
+# exists -- so `@main` keeps working throughout.
+name: Self release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  pin:
+    name: Pin actions to ${{ github.event.release.tag_name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24.x
+
+      - name: Pin the actions and re-point the tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          npm run pin -- "$TAG"
+          if git diff --quiet; then
+            echo "The references already point at $TAG, nothing to do."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(changelog): pin actions to $TAG"
+          git push origin main
+          git tag --force "$TAG"
+          git push --force origin "refs/tags/$TAG"

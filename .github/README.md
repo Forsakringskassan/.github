@@ -119,13 +119,24 @@ its own steps:
 | Tests        | [`vitest-config`](https://github.com/Forsakringskassan/vitest-config) or [`jest-config`](https://github.com/Forsakringskassan/jest-config), chosen from your `devDependencies` |
 | Prettier     | [`prettier-config`](https://github.com/Forsakringskassan/prettier-config)                                                                                                      |
 | ESLint       | [`eslint-config`](https://github.com/Forsakringskassan/eslint-config)                                                                                                          |
-| npm-pkg-lint | [`ext/npm-pkg-lint`](https://github.com/ext/npm-pkg-lint)                                                                                                                      |
 | Release      | [`semantic-release-config`](https://github.com/Forsakringskassan/semantic-release-config)                                                                                      |
 
 So the test job publishes its results as a check, and it drops `pretest` first
 — a failing lint no longer stops the tests from running, because linting is a
 separate job anyway. The remaining steps are plain npm scripts and run only if
 you have them. Steps run in order and stop at the first failure.
+
+[`npm-pkg-lint`](https://github.com/ext/npm-pkg-lint) runs on the packed
+tarball if you have it as a dependency, no script needed. It is run as the CLI
+rather than through its action, so that the version is always the one in your
+`package.json`. To pass it flags, add the script and that is used instead:
+
+```json
+"npm-pkg-lint": "npm-pkg-lint --allow-file=foo --allow-dependency=bar"
+```
+
+The flags then sit next to the version they belong to, and Renovate keeps both
+current together.
 
 `bundle-npm-lib-release` builds and then runs
 [semantic-release](https://github.com/Forsakringskassan/semantic-release-config).
@@ -207,7 +218,8 @@ npm run lint          # prettier + structure check
 npm run prettier:write
 ```
 
-`self-lint.yaml` runs the same checks on every push. The structure check is
+[`self-lint.yaml`](workflows/self-lint.yaml) runs the same checks on every
+push. The structure check is
 [`scripts/check-workflows.mjs`](../scripts/check-workflows.mjs) and enforces:
 
 - every workflow is `bundle-*.yaml` (public API) or `self-*.yaml` (this
@@ -238,25 +250,37 @@ npm run prettier:write
 
 ### Releasing
 
-The bundles pin the actions they compose, so a change to an action only reaches
-callers once a new version exists. Changing an action and publishing it is one
-commit:
+The bundles pin the actions they compose, so a change to an action reaches
+callers once a new version exists. **Publishing the draft release is the only
+manual step.**
+
+1. Every push to `main` updates a draft release —
+   [`self-draft-release.yaml`](workflows/self-draft-release.yaml) renders the
+   unreleased changes and works out the next version from the conventional
+   commits.
+2. When you want that version cut, publish the draft. GitHub creates the tag.
+3. [`self-release.yaml`](workflows/self-release.yaml) then runs
+   `npm run pin -- <version>`, commits the rewritten references and re-points
+   the tag at that commit — so the bundles at `v1.0.1` use the actions at
+   `v1.0.1`.
+
+Between releases `main` references the last released version, which always
+exists, so `@main` keeps working throughout.
+
+By hand, the same thing is:
 
 ```sh
-npm run pin -- v1.0.1                     # rewrite the references
-git commit -am "chore: release v1.0.1"
+npm run pin -- v1.0.1
+git commit -am "chore(changelog): pin actions to v1.0.1"
 git tag v1.0.1 && git push --follow-tags
 ```
-
-The references and the tag land on the same commit, so the bundle at `v1.0.1`
-uses the actions at `v1.0.1`.
 
 It has to be a tag and not a commit SHA. You do not know the SHA of the commit
 you are writing, so you could never pin it in the same commit; and Renovate
 would chase its own tail, because every update it pushed would move `main` and
 make the pin stale again. A version tag has neither problem, which is why
 Renovate is switched off for this repository's own references in
-[`renovate.json`](../renovate.json) — the release above owns them. Renovate
-still maintains every third-party pin.
+[`renovate.json`](../renovate.json) — the release owns them. Renovate still
+maintains every third-party pin.
 
 Guidance for agents is in [AGENTS.md](../AGENTS.md).

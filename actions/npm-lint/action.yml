@@ -27,11 +27,16 @@ runs:
       shell: bash
       run: npm run --if-present html-validate -- --max-warnings 0
 
-    # Deliberately the CLI rather than the ext/npm-pkg-lint action: the action's
-    # inputs mirror the CLI's flags, so the two versions have to agree, and a
+    # Deliberately the CLI rather than the ext/npm-pkg-lint action. The action's
+    # inputs mirror the CLI's flags, so the two versions have to agree -- and a
     # shared bundle cannot pin one action version that matches every caller's
-    # package.json. `npm exec` runs whatever the caller installed, so they agree
-    # by construction.
+    # package.json. `npm exec` runs whatever the caller installed, so they
+    # cannot drift.
+    #
+    # Flags go in an `npm-pkg-lint` script, next to the dependency they belong
+    # to, which Renovate already keeps current:
+    #
+    #   "npm-pkg-lint": "npm-pkg-lint --allow-file=foo --allow-dependency=bar"
     - name: Cache npm-pkg-lint
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
@@ -46,7 +51,11 @@ runs:
           exit 0
         fi
         npm pack
-        npm exec npm-pkg-lint
+        if node -p "!!(require('./package.json').scripts || {})['npm-pkg-lint']" | grep -qx true; then
+          npm run npm-pkg-lint
+        else
+          npm exec npm-pkg-lint
+        fi
 
     - name: Are the types wrong?
       shell: bash
