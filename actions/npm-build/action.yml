@@ -1,0 +1,25 @@
+---
+name: npm build
+description: >-
+  Build and test a package. Every step is an npm script run with
+  `--if-present`, so a repository opts in by having the script in its
+  package.json. Expects `npm-setup` to have run first.
+
+runs:
+  using: composite
+  steps:
+    - name: Build
+      shell: bash
+      run: npm run --if-present build
+
+    - name: Unit tests
+      shell: bash
+      run: npm run --if-present --ignore-scripts test
+
+    - name: Integration tests
+      shell: bash
+      run: npm run --if-present --ignore-scripts integration-test
+
+    - name: Selftest
+      shell: bash
+      run: npm run --if-present selftest

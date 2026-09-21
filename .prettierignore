@@ -1,0 +1,4 @@
+package-lock.json
+
+# Organisation profile content, not part of the CI environment.
+profile/

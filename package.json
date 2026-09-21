@@ -1,0 +1,17 @@
+{
+  "name": "@forsakringskassan/dot-github",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared GitHub Actions workflows and actions for the organisation",
+  "type": "module",
+  "scripts": {
+    "check-workflows": "node scripts/check-workflows.mjs",
+    "lint": "npm run prettier:check && npm run check-workflows",
+    "prettier:check": "prettier --check .",
+    "prettier:write": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "3.9.7",
+    "yaml": "2.8.1"
+  }
+}

@@ -1,0 +1,36 @@
+---
+name: npm setup
+description: >-
+  Install Node.js, optionally a specific npm, and the dependencies of the
+  repository. Expects the repository to already be checked out.
+
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: 24.x
+  npm-version:
+    description: >-
+      npm version to install. Empty means the npm bundled with Node.js.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+
+    - name: Install npm
+      if: inputs.npm-version != ''
+      shell: bash
+      run: npm install --global "npm@${{ inputs.npm-version }}"
+
+    - name: Install dependencies
+      shell: bash
+      env:
+        HUSKY: "0"
+      run: npm ci

@@ -1,9 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["github-actions"],
+  "enabledManagers": ["github-actions", "npm"],
   "github-actions": {
-    "managerFilePatterns": ["/.github/workflows/.*\\.ya?ml$/"]
+    "managerFilePatterns": [
+      "/^\\.github/workflows/.+\\.ya?ml$/",
+      "/^actions/.+/action\\.ya?ml$/"
+    ]
   },
   "automerge": true,
   "automergeType": "pr",

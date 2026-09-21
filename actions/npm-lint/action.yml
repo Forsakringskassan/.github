@@ -1,0 +1,51 @@
+---
+name: npm lint
+description: >-
+  Lint a package. Every step is an npm script run with `--if-present`, so a
+  repository opts in by having the script in its package.json. Expects
+  `npm-setup` to have run first.
+
+inputs:
+  npm-pkg-lint-folders:
+    description: Space separated folders to run npm-pkg-lint in.
+    required: false
+    default: "."
+  npm-pkg-lint-allow-dependencies:
+    description: >-
+      Comma separated dependencies npm-pkg-lint should accept even though it
+      would normally reject them.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Build
+      shell: bash
+      run: npm run --if-present build
+
+    - name: Prettier
+      shell: bash
+      run: npm run --if-present prettier:check
+
+    - name: ESLint
+      shell: bash
+      run: npm run --if-present eslint -- --max-warnings 0
+
+    - name: Stylelint
+      shell: bash
+      run: npm run --if-present stylelint -- --max-warnings 0
+
+    - name: HTML Validate
+      shell: bash
+      run: npm run --if-present html-validate -- --max-warnings 0
+
+    - name: npm-pkg-lint
+      uses: ext/npm-pkg-lint@main
+      with:
+        folders: ${{ inputs.npm-pkg-lint-folders }}
+        allow-dependencies: ${{ inputs.npm-pkg-lint-allow-dependencies }}
+
+    - name: Are the types wrong?
+      shell: bash
+      run: npm run --if-present attw
