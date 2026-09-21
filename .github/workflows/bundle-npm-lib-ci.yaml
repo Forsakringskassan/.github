@@ -24,6 +24,10 @@ jobs:
   build:
     name: Build (${{ matrix.runner }}, node ${{ matrix.node-version }})
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      # The test actions publish their results as a check.
+      checks: write
     strategy:
       fail-fast: false
       matrix:

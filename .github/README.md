@@ -67,6 +67,7 @@ on: [push, pull_request]
 
 permissions:
   contents: read
+  checks: write # so the bundle can publish test results
 
 jobs:
   ci:
