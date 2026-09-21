@@ -105,15 +105,26 @@ only pass the secret.
 **your `package.json` is the configuration**. A script you do not have is a
 step that does not run. Nothing to opt out of, nothing to pass.
 
-| Job     | npm scripts it runs, in order                                             |
-| ------- | ------------------------------------------------------------------------- |
-| `build` | `build`, `test`, `integration-test`                                       |
-| `lint`  | `build`, `prettier:check`, `eslint`, `stylelint`, `html-validate`, `attw` |
+| Job     | What it runs, in order                                                                |
+| ------- | ------------------------------------------------------------------------------------- |
+| `build` | `npm run build`, the tests, `npm run integration-test`                                |
+| `lint`  | `npm run build`, prettier, eslint, `stylelint`, `html-validate`, npm-pkg-lint, `attw` |
 
-The `lint` job also runs [`npm-pkg-lint`](https://github.com/ext/npm-pkg-lint)
-on the packed tarball, which needs no script. `test` and `integration-test` run
-with `--ignore-scripts`, so a `pretest` that lints does not run twice. Steps run
-in order and stop at the first failure.
+Where the organisation already has an action, the bundle uses it rather than
+its own steps:
+
+| Step         | Action                                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tests        | [`vitest-config`](https://github.com/Forsakringskassan/vitest-config) or [`jest-config`](https://github.com/Forsakringskassan/jest-config), chosen from your `devDependencies` |
+| Prettier     | [`prettier-config`](https://github.com/Forsakringskassan/prettier-config)                                                                                                      |
+| ESLint       | [`eslint-config`](https://github.com/Forsakringskassan/eslint-config)                                                                                                          |
+| npm-pkg-lint | [`ext/npm-pkg-lint`](https://github.com/ext/npm-pkg-lint)                                                                                                                      |
+| Release      | [`semantic-release-config`](https://github.com/Forsakringskassan/semantic-release-config)                                                                                      |
+
+So the test job publishes its results as a check, and it drops `pretest` first
+— a failing lint no longer stops the tests from running, because linting is a
+separate job anyway. The remaining steps are plain npm scripts and run only if
+you have them. Steps run in order and stop at the first failure.
 
 `bundle-npm-lib-release` builds and then runs
 [semantic-release](https://github.com/Forsakringskassan/semantic-release-config).
@@ -145,15 +156,17 @@ Pin to a commit SHA with a `# main` comment, which is what Renovate maintains
 for you:
 
 ```yaml
-uses: Forsakringskassan/.github/.github/workflows/bundle-npm-lib-ci.yaml@73b6152 # main
+uses: Forsakringskassan/.github/.github/workflows/bundle-npm-lib-ci.yaml@<sha> # main
 ```
 
-A plain `@main` also works. The SHA form is preferred because it makes a change
-here land as a reviewable pull request in your repository rather than silently.
+**A pinned bundle is reproducible.** Everything a bundle reaches for is itself
+pinned to a SHA, including the actions in this repository — that is why the
+bundles say `actions/npm-setup@<sha> # main` and not `@main`. `uses:` cannot
+take an expression, so a bundle has no way to pass its own ref down to an
+action; pinning each one by hand is what closes that hole. Renovate keeps every
+pin, here and in your repository, up to date.
 
-Note that the actions a bundle uses always resolve at `@main` — `uses:` cannot
-take an expression, so a bundle cannot pass its own ref down. Pinning makes
-changes visible, it does not freeze behaviour.
+A plain `@main` also works if you would rather always have the latest.
 
 ### Something the bundle does not cover
 
@@ -180,9 +193,12 @@ npm run prettier:write
 - a bundle is `workflow_call`-only, carries a `# PUBLIC API` header comment,
   and gives every input a `type` and a `description`
 - a `self-*` workflow is not reusable
-- every `Forsakringskassan/.github/actions/<name>@main` reference resolves, and
-  uses `@main` — a relative `./actions/...` would resolve against the _calling_
-  repository, so it is rejected
+- every `uses:` is pinned to a 40-character commit SHA and carries a
+  `# <ref>` comment saying what that SHA is, so a pinned bundle builds the same
+  way tomorrow
+- every `Forsakringskassan/.github/actions/<name>` reference resolves — a
+  relative `./actions/...` would resolve against the _calling_ repository, so
+  it is rejected
 - every action is a composite action with a description, and every `run:` step
   in it declares a `shell:`
 - there are no subdirectories under `.github/workflows/`
@@ -197,5 +213,9 @@ npm run prettier:write
 3. Give every input a default that suits the common case, so callers can pass
    nothing.
 4. Add the bundle to the table above, and run `npm run lint`.
+
+Changing an action takes two steps, because the bundles pin it: merge the
+change to the action, then bump the SHA in the bundles that use it. Renovate
+opens that second pull request on its own, or you can do it by hand.
 
 Guidance for agents is in [AGENTS.md](../AGENTS.md).

@@ -20,16 +20,6 @@ function fail(where, message) {
   problems.push(`${where}: ${message}`);
 }
 
-/** Walk every nested value of a parsed YAML document. */
-function* walk(node) {
-  if (Array.isArray(node)) {
-    for (const value of node) yield* walk(value);
-  } else if (node && typeof node === "object") {
-    yield node;
-    for (const value of Object.values(node)) yield* walk(value);
-  }
-}
-
 /** The `on:` block. Some YAML versions read the bare key `on` as `true`. */
 function onBlock(doc) {
   return doc?.on ?? doc?.true;
@@ -95,30 +85,55 @@ function checkWorkflow(file, doc, source) {
     fail(file, "must not be reusable; rename it bundle-* if it is public API");
   }
 
-  for (const node of walk(doc)) {
-    const uses = node.uses;
-    if (typeof uses !== "string") continue;
+  checkUses(file, source);
+}
+
+/**
+ * Every `uses:` must name a commit SHA and carry a `# <ref>` comment.
+ *
+ * A caller that pins a bundle to a SHA expects the same build tomorrow. That
+ * only holds if everything the bundle reaches for is pinned too, including the
+ * actions in this repository -- which is why those are pinned rather than
+ * taken at @main. Renovate keeps every one of them up to date.
+ */
+function checkUses(where, source) {
+  const PINNED = /^[0-9a-f]{40}$/;
+  for (const line of source.split("\n")) {
+    const match = /^\s*(?:-\s*)?uses:\s*(\S+)\s*(?:#\s*(\S+))?/.exec(line);
+    if (!match) continue;
+    const [, uses, comment] = match;
+
     if (uses.startsWith("./")) {
       fail(
-        file,
+        where,
         `uses '${uses}'; a relative path resolves against the calling ` +
-          "repository, not this one. Use the full " +
-          `${ACTION_PREFIX}<name>@main form.`,
+          "repository, not this one. Use the full owner/repo@sha form.",
+      );
+      continue;
+    }
+
+    const ref = uses.split("@")[1];
+    if (!ref || !PINNED.test(ref)) {
+      fail(where, `uses '${uses}'; pin it to a commit SHA`);
+    } else if (!comment) {
+      fail(
+        where,
+        `uses '${uses}' without a '# <ref>' comment saying what it is`,
       );
     }
-    if (!uses.startsWith(ACTION_PREFIX)) continue;
-    const [name, ref] = uses.slice(ACTION_PREFIX.length).split("@");
-    if (!actionNames.has(name)) {
-      fail(file, `uses missing action ${ACTIONS}/${name}`);
-    }
-    if (ref !== "main") {
-      fail(file, `uses ${name}@${ref}; actions in this repository are @main`);
+
+    if (uses.startsWith(ACTION_PREFIX)) {
+      const name = uses.slice(ACTION_PREFIX.length).split("@")[0];
+      if (!actionNames.has(name)) {
+        fail(where, `uses missing action ${ACTIONS}/${name}`);
+      }
     }
   }
 }
 
-function checkAction(name, doc) {
+function checkAction(name, doc, source) {
   const where = `${ACTIONS}/${name}/action.yml`;
+  checkUses(where, source);
   if (!doc?.name) fail(where, "is missing a name");
   if (!doc?.description) fail(where, "is missing a description");
   if (doc?.runs?.using !== "composite") {
@@ -159,7 +174,8 @@ for (const file of workflows) {
 for (const name of actionNames) {
   const path = join(ACTIONS, name, "action.yml");
   try {
-    checkAction(name, parse(readFileSync(path, "utf8")));
+    const source = readFileSync(path, "utf8");
+    checkAction(name, parse(source), source);
   } catch (error) {
     fail(
       `${ACTIONS}/${name}/action.yml`,
@@ -173,7 +189,9 @@ console.log(
 );
 
 if (problems.length > 0) {
-  console.error("\nThese break the structure documented in README.md:\n");
+  console.error(
+    "\nThese break the structure documented in .github/README.md:\n",
+  );
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exit(1);
 }

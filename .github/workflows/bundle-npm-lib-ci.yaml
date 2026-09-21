@@ -34,12 +34,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up
-        uses: Forsakringskassan/.github/actions/npm-setup@main
+        uses: Forsakringskassan/.github/actions/npm-setup@9b402d7e5dd53791322c782b8774f25244d70e75 # main
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Build
-        uses: Forsakringskassan/.github/actions/npm-build@main
+        uses: Forsakringskassan/.github/actions/npm-build@9b402d7e5dd53791322c782b8774f25244d70e75 # main
         with:
           check-name: Tests (${{ matrix.runner }}, node ${{ matrix.node-version }})
 
@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up
-        uses: Forsakringskassan/.github/actions/npm-setup@main
+        uses: Forsakringskassan/.github/actions/npm-setup@9b402d7e5dd53791322c782b8774f25244d70e75 # main
 
       - name: Lint
-        uses: Forsakringskassan/.github/actions/npm-lint@main
+        uses: Forsakringskassan/.github/actions/npm-lint@9b402d7e5dd53791322c782b8774f25244d70e75 # main

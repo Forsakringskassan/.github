@@ -1,4 +1,5 @@
 package-lock.json
 
-# Organisation profile content, not part of the CI environment.
+# Not part of the CI environment, and out of scope for this repository's lint.
+README.md
 profile/
