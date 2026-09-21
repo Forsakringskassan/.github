@@ -171,12 +171,33 @@ A plain `@main` also works if you would rather always have the latest.
 
 ### Something the bundle does not cover
 
-Add an extra job next to the `uses:` job in your own workflow. If several
-repositories of the same kind need it, it belongs in the bundle instead — open
-a pull request here.
+Add an extra job next to the `uses:` job in your own workflow. That is where
+anything specific to one repository belongs — in particular **matrix builds
+over a dependency version**, which are per-repository by nature:
+[`vite-lib-config`](https://github.com/Forsakringskassan/vite-lib-config/blob/main/.github/workflows/build.yml)
+has jobs for vite and typescript, and
+[`cloneman`](https://github.com/Forsakringskassan/cloneman/blob/main/.github/workflows/npm-lib-ci.yaml)
+has one for npm.
+
+```yaml
+jobs:
+  ci:
+    uses: Forsakringskassan/.github/.github/workflows/bundle-npm-lib-ci.yaml@<sha> # main
+
+  vite:
+    strategy:
+      matrix:
+        vite-version: [5.x, 6.x, 7.x]
+    runs-on: ubuntu-latest
+    steps: ...
+```
+
+If several repositories of the same kind need the same extra job, it belongs in
+the bundle instead — open a pull request here. One repository needing it does
+not; a bundle that grows a knob per repository stops being a shared pipeline.
 
 Never call an `actions/` action from your own repository. They are
-implementation details and change without notice.
+implementation details of the bundles and carry no compatibility promise.
 
 ## Working on this repository
 
