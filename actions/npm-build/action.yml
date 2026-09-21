@@ -1,9 +1,16 @@
 ---
 name: npm build
 description: >-
-  Build and test a package. Every step is an npm script run with
-  `--if-present`, so a repository opts in by having the script in its
-  package.json. Expects `npm-setup` to have run first.
+  Build a package and run its tests. Test running is delegated to the
+  organisation's vitest-config / jest-config actions, which drop `pretest` so
+  linting does not gate the tests and publish the results as a check. Expects
+  `npm-setup` to have run first.
+
+inputs:
+  check-name:
+    description: Name of the check the test results are published to.
+    required: false
+    default: Tests
 
 runs:
   using: composite
@@ -12,14 +19,32 @@ runs:
       shell: bash
       run: npm run --if-present build
 
-    - name: Unit tests
+    - name: Detect test runner
+      id: test-runner
+      shell: bash
+      run: |
+        node -e 'const pkg = require("./package.json");
+          const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+          const runner = deps.vitest ? "vitest" : deps.jest ? "jest" : "none";
+          console.log(`runner=${runner}`);' | tee -a "$GITHUB_OUTPUT"
+
+    - name: Vitest
+      if: steps.test-runner.outputs.runner == 'vitest'
+      uses: Forsakringskassan/vitest-config@20de62c6cb04a8028ac3386ed755708117ba4d93 # main
+      with:
+        check-name: ${{ inputs.check-name }}
+
+    - name: Jest
+      if: steps.test-runner.outputs.runner == 'jest'
+      uses: Forsakringskassan/jest-config@8d1c9c8a47c755cd8fa6610f524357f5aa4f0191 # main
+      with:
+        check-name: ${{ inputs.check-name }}
+
+    - name: Tests
+      if: steps.test-runner.outputs.runner == 'none'
       shell: bash
       run: npm run --if-present --ignore-scripts test
 
     - name: Integration tests
       shell: bash
       run: npm run --if-present --ignore-scripts integration-test
-
-    - name: Selftest
-      shell: bash
-      run: npm run --if-present selftest

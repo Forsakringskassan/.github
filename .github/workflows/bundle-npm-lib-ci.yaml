@@ -1,6 +1,6 @@
 ---
 # PUBLIC API -- other repositories call this workflow. Changing its inputs,
-# secrets or job names is a breaking change for them. See ../../README.md.
+# secrets or job names is a breaking change for them. See ../README.md.
 name: Bundle npm lib CI
 
 on:
@@ -11,30 +11,11 @@ on:
         required: false
         type: string
         default: '["22.x", "24.x"]'
-      npm-versions:
-        description: >-
-          JSON array of npm versions to additionally build and test with, on
-          top of the npm bundled with Node.js. An empty array skips the job.
-        required: false
-        type: string
-        default: "[]"
       runs-on:
         description: JSON array of runner labels to build and test on.
         required: false
         type: string
-        default: '["ubuntu-latest"]'
-      npm-pkg-lint-folders:
-        description: Space separated folders to run npm-pkg-lint in.
-        required: false
-        type: string
-        default: "."
-      npm-pkg-lint-allow-dependencies:
-        description: >-
-          Comma separated dependencies npm-pkg-lint should accept even though
-          it would normally reject them.
-        required: false
-        type: string
-        default: ""
+        default: '["ubuntu-latest", "windows-latest"]'
 
 permissions:
   contents: read
@@ -50,7 +31,7 @@ jobs:
         node-version: ${{ fromJSON(inputs.node-versions) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up
         uses: Forsakringskassan/.github/actions/npm-setup@main
@@ -59,40 +40,18 @@ jobs:
 
       - name: Build
         uses: Forsakringskassan/.github/actions/npm-build@main
-
-  build-npm:
-    name: Build (npm ${{ matrix.npm-version }})
-    if: inputs.npm-versions != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        npm-version: ${{ fromJSON(inputs.npm-versions) }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up
-        uses: Forsakringskassan/.github/actions/npm-setup@main
         with:
-          npm-version: ${{ matrix.npm-version }}
-
-      - name: Build
-        uses: Forsakringskassan/.github/actions/npm-build@main
+          check-name: Tests (${{ matrix.runner }}, node ${{ matrix.node-version }})
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up
         uses: Forsakringskassan/.github/actions/npm-setup@main
 
       - name: Lint
         uses: Forsakringskassan/.github/actions/npm-lint@main
-        with:
-          npm-pkg-lint-folders: ${{ inputs.npm-pkg-lint-folders }}
-          npm-pkg-lint-allow-dependencies: >-
-            ${{ inputs.npm-pkg-lint-allow-dependencies }}

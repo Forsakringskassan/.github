@@ -32,7 +32,7 @@ runs:
       run: ${{ inputs.build-command }}
 
     - name: Release
-      uses: Forsakringskassan/semantic-release-config@main
+      uses: Forsakringskassan/semantic-release-config@74ee7107011869d5f34f0097baab1671d330b611 # main
       with:
         app-slug: ${{ inputs.app-slug }}
         gh-token: ${{ inputs.gh-token }}

@@ -1,22 +1,11 @@
 ---
 # PUBLIC API -- other repositories call this workflow. Changing its inputs,
-# secrets or job names is a breaking change for them. See ../../README.md.
+# secrets or job names is a breaking change for them. See ../README.md.
 name: Bundle npm lib release
 
 on:
   workflow_call:
     inputs:
-      app-id:
-        description: >-
-          Client ID of the GitHub App that authors the release commit,
-          normally `vars.RELEASE_APP_ID`.
-        required: true
-        type: string
-      node-version:
-        description: Node.js version used to build the release.
-        required: false
-        type: string
-        default: 24.x
       config-preset:
         description: >-
           semantic-release config preset. Empty means automatic detection.
@@ -30,7 +19,9 @@ on:
         default: npm run --if-present build
     secrets:
       app-key:
-        description: Private key of the GitHub App given in `app-id`.
+        description: >-
+          Private key of the GitHub App that authors the release commit,
+          normally `secrets.RELEASE_APP_KEY`.
         required: true
 
 permissions:
@@ -46,23 +37,23 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
+      # `vars` in a called workflow resolves against the calling repository,
+      # so this is the caller's RELEASE_APP_ID, not one from this repository.
       - name: Create app token
         id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
-          app-id: ${{ inputs.app-id }}
+          app-id: ${{ vars.RELEASE_APP_ID }}
           private-key: ${{ secrets.app-key }}
 
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Set up
         uses: Forsakringskassan/.github/actions/npm-setup@main
-        with:
-          node-version: ${{ inputs.node-version }}
 
       - name: Release
         uses: Forsakringskassan/.github/actions/npm-release@main

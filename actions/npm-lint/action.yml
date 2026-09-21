@@ -1,21 +1,10 @@
 ---
 name: npm lint
 description: >-
-  Lint a package. Every step is an npm script run with `--if-present`, so a
-  repository opts in by having the script in its package.json. Expects
-  `npm-setup` to have run first.
-
-inputs:
-  npm-pkg-lint-folders:
-    description: Space separated folders to run npm-pkg-lint in.
-    required: false
-    default: "."
-  npm-pkg-lint-allow-dependencies:
-    description: >-
-      Comma separated dependencies npm-pkg-lint should accept even though it
-      would normally reject them.
-    required: false
-    default: ""
+  Lint a package. Prettier and ESLint are delegated to the organisation's
+  prettier-config / eslint-config actions, which already detect whether the
+  repository is configured for them. The rest are npm scripts run with
+  `--if-present`. Expects `npm-setup` to have run first.
 
 runs:
   using: composite
@@ -25,12 +14,10 @@ runs:
       run: npm run --if-present build
 
     - name: Prettier
-      shell: bash
-      run: npm run --if-present prettier:check
+      uses: Forsakringskassan/prettier-config@687c8c978d7415c6910df49aab289b45783f7441 # main
 
     - name: ESLint
-      shell: bash
-      run: npm run --if-present eslint -- --max-warnings 0
+      uses: Forsakringskassan/eslint-config@6df28dbc6d037f637dbbeabce5e337f2b55511ec # main
 
     - name: Stylelint
       shell: bash
@@ -41,10 +28,7 @@ runs:
       run: npm run --if-present html-validate -- --max-warnings 0
 
     - name: npm-pkg-lint
-      uses: ext/npm-pkg-lint@main
-      with:
-        folders: ${{ inputs.npm-pkg-lint-folders }}
-        allow-dependencies: ${{ inputs.npm-pkg-lint-allow-dependencies }}
+      uses: ext/npm-pkg-lint@52f0ad3b4dc08b570f2f45ce95bd8d1f67bd3297 # v5.3.1
 
     - name: Are the types wrong?
       shell: bash
