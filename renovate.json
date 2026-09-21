@@ -1,10 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["github-actions"],
+  "enabledManagers": ["github-actions", "npm"],
   "github-actions": {
-    "managerFilePatterns": ["/.github/workflows/.*\\.ya?ml$/"]
+    "managerFilePatterns": [
+      "/^\\.github/workflows/.+\\.ya?ml$/",
+      "/^actions/.+/action\\.ya?ml$/"
+    ]
   },
+  "packageRules": [
+    {
+      "description": "This repository's own actions are pinned by the release process, not by Renovate. Letting Renovate bump them would loop: every update it pushes moves main and makes the pin stale again.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["Forsakringskassan/.github"],
+      "enabled": false
+    }
+  ],
   "automerge": true,
   "automergeType": "pr",
   "automergeStrategy": "auto",

@@ -1,0 +1,61 @@
+---
+# PUBLIC API -- other repositories call this workflow. Changing its inputs,
+# secrets or job names is a breaking change for them. See ../README.md.
+name: Bundle npm lib CI
+
+on:
+  workflow_call:
+    inputs:
+      node-versions:
+        description: JSON array of Node.js versions to build and test with.
+        required: false
+        type: string
+        default: '["22.x", "24.x"]'
+      runs-on:
+        description: JSON array of runner labels to build and test on.
+        required: false
+        type: string
+        default: '["ubuntu-latest", "windows-latest"]'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.runner }}, node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      # The test actions publish their results as a check.
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(inputs.runs-on) }}
+        node-version: ${{ fromJSON(inputs.node-versions) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up
+        uses: Forsakringskassan/.github/actions/npm-setup@v1.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Build
+        uses: Forsakringskassan/.github/actions/npm-build@v1.0.0
+        with:
+          check-name: Tests (${{ matrix.runner }}, node ${{ matrix.node-version }})
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up
+        uses: Forsakringskassan/.github/actions/npm-setup@v1.0.0
+
+      - name: Lint
+        uses: Forsakringskassan/.github/actions/npm-lint@v1.0.0

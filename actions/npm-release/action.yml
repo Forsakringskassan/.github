@@ -1,0 +1,39 @@
+---
+name: npm release
+description: >-
+  Build the package and cut a release with semantic-release. Expects the
+  repository to be checked out with full history and `npm-setup` to have run
+  first.
+
+inputs:
+  app-slug:
+    description: Slug of the GitHub App that authors the release commit.
+    required: true
+  gh-token:
+    description: Token of the GitHub App that authors the release commit.
+    required: true
+  config-preset:
+    description: >-
+      semantic-release config preset. Empty means automatic detection.
+    required: false
+    default: ""
+  build-command:
+    description: Command run to build the package before releasing it.
+    required: false
+    default: npm run --if-present build
+
+runs:
+  using: composite
+  steps:
+    - name: Build
+      shell: bash
+      env:
+        HUSKY: "0"
+      run: ${{ inputs.build-command }}
+
+    - name: Release
+      uses: Forsakringskassan/semantic-release-config@74ee7107011869d5f34f0097baab1671d330b611 # main
+      with:
+        app-slug: ${{ inputs.app-slug }}
+        gh-token: ${{ inputs.gh-token }}
+        config-preset: ${{ inputs.config-preset }}

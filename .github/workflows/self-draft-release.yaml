@@ -1,0 +1,38 @@
+---
+# Runs in THIS repository only. Not reusable.
+#
+# Keeps a draft release up to date with everything on main that is not released
+# yet, and works out the next version from the conventional commits. Publishing
+# that draft is how a version is cut -- self-release.yaml takes it from there.
+name: Self draft release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  draft-release:
+    name: Draft release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Draft release
+        uses: tomasbjerre/git-changelog-github-release@09b134c164c3df9eb663ded39f7d3364b0bbbb9d # 2.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

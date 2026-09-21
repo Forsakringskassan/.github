@@ -1,0 +1,59 @@
+---
+# PUBLIC API -- other repositories call this workflow. Changing its inputs,
+# secrets or job names is a breaking change for them. See ../README.md.
+name: Bundle npm lib release
+
+on:
+  workflow_call:
+    inputs:
+      config-preset:
+        description: >-
+          semantic-release config preset. Empty means automatic detection.
+        required: false
+        type: string
+        default: ""
+      build-command:
+        description: Command run to build the package before releasing it.
+        required: false
+        type: string
+        default: npm run --if-present build
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+      # `vars` and, with `secrets: inherit`, `secrets` resolve against the
+      # calling repository, so these are the caller's -- which is why the
+      # caller passes nothing.
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up
+        uses: Forsakringskassan/.github/actions/npm-setup@v1.0.0
+
+      - name: Release
+        uses: Forsakringskassan/.github/actions/npm-release@v1.0.0
+        with:
+          app-slug: ${{ steps.app-token.outputs.app-slug }}
+          gh-token: ${{ steps.app-token.outputs.token }}
+          config-preset: ${{ inputs.config-preset }}
+          build-command: ${{ inputs.build-command }}

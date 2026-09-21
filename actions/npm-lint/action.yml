@@ -1,0 +1,62 @@
+---
+name: npm lint
+description: >-
+  Lint a package. Prettier and ESLint are delegated to the organisation's
+  prettier-config / eslint-config actions, which already detect whether the
+  repository is configured for them. The rest are npm scripts run with
+  `--if-present`. Expects `npm-setup` to have run first.
+
+runs:
+  using: composite
+  steps:
+    - name: Build
+      shell: bash
+      run: npm run --if-present build
+
+    - name: Prettier
+      uses: Forsakringskassan/prettier-config@687c8c978d7415c6910df49aab289b45783f7441 # main
+
+    - name: ESLint
+      uses: Forsakringskassan/eslint-config@6df28dbc6d037f637dbbeabce5e337f2b55511ec # main
+
+    - name: Stylelint
+      shell: bash
+      run: npm run --if-present stylelint -- --max-warnings 0
+
+    - name: HTML Validate
+      shell: bash
+      run: npm run --if-present html-validate -- --max-warnings 0
+
+    # Deliberately the CLI rather than the ext/npm-pkg-lint action. The action's
+    # inputs mirror the CLI's flags, so the two versions have to agree -- and a
+    # shared bundle cannot pin one action version that matches every caller's
+    # package.json. `npm exec` runs whatever the caller installed, so they
+    # cannot drift.
+    #
+    # Flags go in an `npm-pkg-lint` script, next to the dependency they belong
+    # to, which Renovate already keeps current:
+    #
+    #   "npm-pkg-lint": "npm-pkg-lint --allow-file=foo --allow-dependency=bar"
+    - name: Cache npm-pkg-lint
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.cache/npm-pkg-lint
+        key: npm-pkg-lint
+
+    - name: npm-pkg-lint
+      shell: bash
+      run: |
+        if [ -z "$(npm ls --parseable npm-pkg-lint 2>/dev/null)" ]; then
+          echo "npm-pkg-lint is not a dependency, skipping"
+          exit 0
+        fi
+        npm pack
+        if node -p "!!(require('./package.json').scripts || {})['npm-pkg-lint']" | grep -qx true; then
+          npm run npm-pkg-lint
+        else
+          npm exec npm-pkg-lint
+        fi
+
+    - name: Are the types wrong?
+      shell: bash
+      run: npm run --if-present attw

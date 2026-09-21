@@ -1,0 +1,5 @@
+package-lock.json
+
+# Not part of the CI environment, and out of scope for this repository's lint.
+README.md
+profile/
