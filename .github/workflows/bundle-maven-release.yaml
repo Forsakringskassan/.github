@@ -14,7 +14,7 @@ on:
 
 jobs:
   call-bundle-maven-quarkus-release:
-    uses: Forsakringskassan/.github/.github/workflows/bundle-maven-quarkus-release.yaml@main
+    uses: $/.github/workflows/bundle-maven-quarkus-release.yaml
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
