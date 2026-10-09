@@ -10,7 +10,7 @@ on:
 
 jobs:
   call-maven-ci:
-    uses: Forsakringskassan/.github/.github/workflows/maven-ci.yaml@main
+    uses: $/.github/workflows/maven-ci.yaml
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
@@ -18,7 +18,7 @@ jobs:
   call-app-maven-docker-quarkus:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     needs: [call-maven-ci]
-    uses: Forsakringskassan/.github/.github/workflows/app-maven-docker-quarkus.yaml@main
+    uses: $/.github/workflows/app-maven-docker-quarkus.yaml
     with:
       release: false
       version: snapshot
@@ -27,4 +27,4 @@ jobs:
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
       
   call-pnr-scan:
-    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main
+    uses: $/.github/workflows/pnr-scanner.yaml
