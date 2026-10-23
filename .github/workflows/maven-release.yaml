@@ -21,6 +21,10 @@ jobs:
       contents: write
       packages: write
 
+    env:
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ github.token }}
+
     steps:
       - uses: actions/checkout@v7
         with:
@@ -47,8 +51,8 @@ jobs:
             <servers>
               <server>
                 <id>github--Forsakringskassan--repository</id>
-                <username>${env.PACKAGES_RW_ACTOR}</username>
-                <password>${env.PACKAGES_RW_TOKEN}</password>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
               </server>
             </servers>
           </settings>
@@ -66,10 +70,8 @@ jobs:
 
       - name: Publish with Maven
         run: |
-          ./mvnw -T 1C -s "$RUNNER_TEMP/maven/settings.xml" -ntp package deploy
+          ./mvnw -T 1C -s "$RUNNER_TEMP/maven/settings.xml" -ntp package deploy -DaltDeploymentRepository=github--Forsakringskassan--repository::https://maven.pkg.github.com/${{ github.repository }}
         env:
           GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
