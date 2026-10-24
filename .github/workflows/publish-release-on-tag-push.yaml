@@ -14,13 +14,46 @@ jobs:
           ref: ${{ github.ref_name }}
           fetch-tags: "true"
           fetch-depth: "0"
-      - name: Setup java
-        uses: actions/setup-java@v6
+
+      # Workflowet används även av appar. Med pattern i stället för name ger en
+      # saknad artefakt inget fel, medan andra fel (t.ex. fel version av
+      # actionen) fortfarande stoppar jobbet.
+      - name: Fetch Maven staging
+        uses: actions/download-artifact@v8
         with:
-          distribution: "zulu"
-          java-version: 17
-      - uses: tomasbjerre/git-changelog-github-release@main
+          pattern: maven-staging
+          merge-multiple: true
+          path: ${{ runner.temp }}/maven-staging
+
+      - name: Create or update GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          draft: false
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f "$RUNNER_TEMP/maven-staging/release-version.txt" ]; then
+            HAS_STAGING=true
+          else
+            HAS_STAGING=false
+          fi
+
+          if [ "$HAS_STAGING" = "true" ]; then
+            TAG="$(cat "$RUNNER_TEMP/maven-staging/release-version.txt")"
+            ASSETS=("$RUNNER_TEMP/maven-staging/maven-staging.tar.gz")
+          else
+            TAG="$(git tag --sort=-v:refname | head -n 1)"
+            ASSETS=()
+          fi
+          [ -n "$TAG" ] || { echo "::error::Hittade ingen tagg"; exit 1; }
+
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG finns redan, uppdaterar tillgångar"
+            if [ ${#ASSETS[@]} -gt 0 ]; then
+              gh release upload "$TAG" "${ASSETS[@]}" -R "$GITHUB_REPOSITORY" --clobber
+            fi
+          else
+            gh release create "$TAG" "${ASSETS[@]}" -R "$GITHUB_REPOSITORY" \
+              --verify-tag --generate-notes --title "$TAG"
+          fi
+
+          if [ "$HAS_STAGING" = "true" ]; then
+            echo "::notice::Starta intaget: gh workflow run maven-intake.yaml -R Forsakringskassan/repository -f repo=${GITHUB_REPOSITORY#*/} -f tag=$TAG"
+          fi

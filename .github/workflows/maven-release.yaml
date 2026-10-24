@@ -1,5 +1,10 @@
 name: Maven Release
 
+# Akutfix: publicerar inte längre direkt till GitHub Packages.
+# Artefakterna byggs och läggs i en lokal Maven-layout (staging),
+# som laddas upp som workflow-artefakt. publish-release-on-tag-push.yaml
+# lägger dem på GitHub Releasen, och Forsakringskassan/repository tar in
+# dem med maven-intake.yaml
 
 on:
   workflow_call:
@@ -8,25 +13,41 @@ on:
         required: true
         type: string
     secrets:
+      # Används inte längre. Kvar som valfria tills anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   maven-release:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write
-      packages: write
+      contents: read
+      packages: read
+
+    env:
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
 
     steps:
+      - name: Set paths
+        run: |
+          {
+            echo "MAVEN_SETTINGS=$RUNNER_TEMP/maven/settings.xml"
+            echo "STAGING_DIR=$RUNNER_TEMP/staging-repo"
+            echo "STAGING_ARCHIVE=$RUNNER_TEMP/maven-staging.tar.gz"
+            echo "VERSION_FILE=$RUNNER_TEMP/release-version.txt"
+          } >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
 
       - name: Set up JDK
         uses: actions/setup-java@v6
@@ -37,8 +58,8 @@ jobs:
 
       - name: Create Maven settings.xml
         run: |
-          mkdir -p "$RUNNER_TEMP/maven"
-          cat <<'EOF' > "$RUNNER_TEMP/maven/settings.xml"
+          mkdir -p "$(dirname "$MAVEN_SETTINGS")"
+          cat <<'EOF' > "$MAVEN_SETTINGS"
           <?xml version="1.0" encoding="UTF-8"?>
           <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -47,29 +68,34 @@ jobs:
             <servers>
               <server>
                 <id>github--Forsakringskassan--repository</id>
-                <username>${env.PACKAGES_RW_ACTOR}</username>
-                <password>${env.PACKAGES_RW_TOKEN}</password>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
               </server>
             </servers>
           </settings>
           EOF
 
-      - name: Git User
-        run: |
-          git config --global user.name "Github Actions"
-          git config --global user.email "nobody@fk.se"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-
       - name: Set version
         run: |
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C versions:set -DnewVersion=${{ inputs.version }} -DprocessAllModules=true
+          ./mvnw -s "$MAVEN_SETTINGS" -ntp -T 1C versions:set -DnewVersion="$VERSION" -DprocessAllModules=true
 
-      - name: Publish with Maven
+      - name: Build and stage artifacts
         run: |
-          ./mvnw -T 1C -s "$RUNNER_TEMP/maven/settings.xml" -ntp package deploy
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          ./mvnw -T 1C -s "$MAVEN_SETTINGS" -ntp deploy \
+            -DaltDeploymentRepository="local::file://$STAGING_DIR"
+
+      - name: Package staging
+        run: |
+          tar -czf "$STAGING_ARCHIVE" -C "$STAGING_DIR" .
+          echo "$VERSION" > "$VERSION_FILE"
+          echo "Innehåll i staging:"
+          tar -tzf "$STAGING_ARCHIVE"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maven-staging
+          path: |
+            ${{ env.STAGING_ARCHIVE }}
+            ${{ env.VERSION_FILE }}
+          if-no-files-found: error
+          retention-days: 7
