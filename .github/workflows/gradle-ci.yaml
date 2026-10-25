@@ -3,10 +3,11 @@ name: Gradle CI
 on:
   workflow_call:
     secrets:
+      # Används inte längre. Kvar som valfria tills alla anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   build-gradle:
@@ -18,8 +19,11 @@ jobs:
       packages: read
     env:
       skip-automatic-fk-code-standard-apply: true
-      GITHUB_ACTOR: ${{ github.actor }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Gradle läser ORG_GRADLE_PROJECT_* som egenskaper. build.gradle och
+      # gradle-conventions använder findProperty("GITHUB_ACTOR"/"GITHUB_TOKEN")
+      # före PAT:en, så läsning från Forsakringskassan/repository sker med GITHUB_TOKEN.
+      ORG_GRADLE_PROJECT_GITHUB_ACTOR: ${{ github.actor }}
+      ORG_GRADLE_PROJECT_GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,18 +47,12 @@ jobs:
         shell: bash
         run: |
           ./gradlew --no-daemon spotlessJavaCheck
-        env:
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
       - name: "Gradle build"
         shell: bash
         run: |
           java -version
           javac -version
           ./gradlew --no-daemon build
-        env:
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Transorm static code analysis to SARIF
         if: ${{ (success() || failure()) }}
