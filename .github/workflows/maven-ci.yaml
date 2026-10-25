@@ -3,10 +3,11 @@ name: Maven CI
 on:
   workflow_call:
     secrets:
+      # Används inte längre. Kvar som valfria tills anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   build-java:
@@ -59,9 +60,6 @@ jobs:
           java -version
           javac -version
           ./mvnw -T 1C -s $RUNNER_TEMP/maven/settings.xml -ntp verify
-        env:
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Transorm static code analysis to SARIF
         if: ${{ (success() || failure()) }}
