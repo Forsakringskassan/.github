@@ -10,11 +10,11 @@ on:
 
 jobs:
   call-npm-ci:
-    uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
+    uses: $/.github/workflows/npm-ci.yaml
   call-app-npm-docker:
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     needs: call-npm-ci
-    uses: Forsakringskassan/.github/.github/workflows/app-npm-docker-runtime-env.yaml@main
+    uses: $/.github/workflows/app-npm-docker-runtime-env.yaml
     with:
       release: false
       version: snapshot
@@ -24,6 +24,6 @@ jobs:
   call-npm-ghpages-app:
     needs: call-app-npm-docker
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
-    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
+    uses: $/.github/workflows/npm-ghpages-app.yaml
   call-pnr-scan:
-    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main
+    uses: $/.github/workflows/pnr-scanner.yaml

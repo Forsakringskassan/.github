@@ -12,11 +12,11 @@ jobs:
   call-app-generic-conventional-release:
     if: |
       ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
-    uses: Forsakringskassan/.github/.github/workflows/generic-conventional-release.yaml@main
+    uses: $/.github/workflows/generic-conventional-release.yaml
   call-app-npm-docker:
     needs: call-app-generic-conventional-release
     if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
-    uses: Forsakringskassan/.github/.github/workflows/app-npm-docker.yaml@main
+    uses: $/.github/workflows/app-npm-docker.yaml
     with:
       version: ${{ needs.call-app-generic-conventional-release.outputs.current-version }}
       release: true
@@ -25,8 +25,8 @@ jobs:
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
   call-npm-ghpages-app:
     if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
-    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
+    uses: $/.github/workflows/npm-ghpages-app.yaml
   publish-release:
     if: needs.call-app-generic-conventional-release.outputs.is-new-version == 'true'
     needs: call-app-npm-docker
-    uses: Forsakringskassan/.github/.github/workflows/publish-release-on-tag-push.yaml@main
+    uses: $/.github/workflows/publish-release-on-tag-push.yaml
