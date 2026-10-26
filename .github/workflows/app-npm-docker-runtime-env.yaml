@@ -14,16 +14,21 @@ on:
         required: true
         type: boolean
     secrets:
+      # Används inte längre. Kvar som valfria tills anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   build-and-push-docker:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     env:
       ARCHS: "amd64 arm64"
+      BUILDX_NO_DEFAULT_ATTESTATIONS: 1
 
     steps:
       - name: Checkout repository
@@ -136,7 +141,7 @@ jobs:
           EOF
           
       - name: Log in to registry
-        run: echo "${{ secrets.PACKAGES_RW_TOKEN }}" | docker login ${{ inputs.registry }} -u ${{ secrets.PACKAGES_RW_ACTOR }} --password-stdin
+        run: echo "${{ github.token }}" | docker login ${{ inputs.registry }} -u ${{ github.actor }} --password-stdin
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -156,7 +161,7 @@ jobs:
               --build-arg GIT_COMMIT=$GIT_COMMIT \
               --build-arg IMAGE_NAME=$IMAGE_BASE \
               --build-arg BUILD_DATE="$BUILD_DATE" \
-              --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+              --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
               --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
               --label "org.opencontainers.image.licenses=MIT" \
               -t "$IMAGE_BASE:$ARCH-snapshot" \
@@ -170,7 +175,7 @@ jobs:
                 --build-arg GIT_COMMIT=$GIT_COMMIT \
                 --build-arg IMAGE_NAME=$IMAGE_BASE \
                 --build-arg BUILD_DATE="$BUILD_DATE" \
-                --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+                --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
                 --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
                 --label "org.opencontainers.image.licenses=MIT" \
                 -t "$IMAGE_BASE:$ARCH-$NEXT_VERSION" \

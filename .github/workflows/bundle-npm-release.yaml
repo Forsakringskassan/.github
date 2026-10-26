@@ -8,10 +8,10 @@ on:
 
 jobs:
   call-npm-release:
-    uses: Forsakringskassan/.github/.github/workflows/npm-release.yaml@main
+    uses: $/.github/workflows/npm-release.yaml
     secrets:
       RELEASE_APP_KEY: ${{ secrets.RELEASE_APP_KEY }}
   call-npm-ghpages-docs:
-    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-docs.yaml@main
+    uses: $/.github/workflows/npm-ghpages-docs.yaml
   call-npm-lint:
-    uses: Forsakringskassan/.github/.github/workflows/npm-lint.yaml@main
+    uses: $/.github/workflows/npm-lint.yaml

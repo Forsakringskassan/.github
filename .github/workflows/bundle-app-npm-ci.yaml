@@ -3,27 +3,25 @@ name: Bundle App NPM CI
 on:
   workflow_call:
     secrets:
+      # Används inte längre. Kvar som valfria tills anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   call-npm-ci:
-    uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
+    uses: $/.github/workflows/npm-ci.yaml
   call-app-npm-docker:
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     needs: call-npm-ci
-    uses: Forsakringskassan/.github/.github/workflows/app-npm-docker.yaml@main
+    uses: $/.github/workflows/app-npm-docker.yaml
     with:
       release: false
       version: snapshot
-    secrets:
-      PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-      PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
   call-npm-ghpages-app:
     needs: call-app-npm-docker
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
-    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-app.yaml@main
+    uses: $/.github/workflows/npm-ghpages-app.yaml
   call-pnr-scan:
-    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main
+    uses: $/.github/workflows/pnr-scanner.yaml

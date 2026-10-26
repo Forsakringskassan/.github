@@ -1,22 +1,42 @@
 name: Gradle Release
 
+# Akutfix: publicerar inte längre direkt till GitHub Packages.
+# Ett init-script lägger till ett lokalt publiceringsmål (Staging) i alla projekt
+# och stänger av publiceringen till GitHubPackages. Stagingen laddas upp som
+# workflow-artefakten maven-staging, precis som i maven-release.yaml.
+# publish-release-on-tag-push.yaml lägger den på GitHub Releasen, och
+# Forsakringskassan/repository tar in den med maven-intake.yaml.
+
 on:
   workflow_call:
     secrets:
+      # Används inte längre. Kvar som valfria tills anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   build-release:
     runs-on: ubuntu-latest
-
     permissions:
-      contents: write
-      packages: write
-
+      contents: write   # updateVersion och release committar, taggar och pushar
+      packages: read
+    env:
+      # Gradle läser ORG_GRADLE_PROJECT_* som egenskaper. build.gradle och
+      # gradle-conventions använder findProperty("GITHUB_ACTOR"/"GITHUB_TOKEN")
+      # före PAT:en, så läsning från Forsakringskassan/repository sker med GITHUB_TOKEN.
+      ORG_GRADLE_PROJECT_GITHUB_ACTOR: ${{ github.actor }}
+      ORG_GRADLE_PROJECT_GITHUB_TOKEN: ${{ github.token }}
     steps:
+      - name: Set paths
+        run: |
+          {
+            echo "STAGING_DIR=$RUNNER_TEMP/staging-repo"
+            echo "STAGING_ARCHIVE=$RUNNER_TEMP/maven-staging.tar.gz"
+            echo "VERSION_FILE=$RUNNER_TEMP/release-version.txt"
+          } >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v7
         with:
           fetch-tags: "true"
@@ -29,14 +49,55 @@ jobs:
           distribution: "zulu"
           cache: 'gradle'
 
-      - name: Publish with Gradle
+      # Init-scripts i ~/.gradle/init.d läses in av varje bygge, även de nästlade
+      # byggen (GradleBuild) som updateVersion och release startar.
+      - name: Install staging init script
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cat > "$HOME/.gradle/init.d/fk-staging.gradle" <<'EOF'
+          allprojects {
+            pluginManager.withPlugin('maven-publish') {
+              extensions.configure(org.gradle.api.publish.PublishingExtension) { publishing ->
+                publishing.repositories.maven { repo ->
+                  repo.name = 'Staging'
+                  repo.url = uri(System.getenv('STAGING_DIR'))
+                }
+              }
+              tasks.matching { it.name.endsWith('ToGitHubPackagesRepository') }.configureEach {
+                enabled = false
+              }
+            }
+          }
+          EOF
+
+      - name: Update version and tag
         run: |
           git config --global user.name "Github Actions"
           git config --global user.email "nobody@fk.se"
-          ./gradlew updateVersion && ./gradlew release
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          ./gradlew updateVersion
+          # Pluginen kontrollerar inte git-kommandonas felkoder, så kontrollera här
+          # att taggen faktiskt skapades på den nya commiten.
+          VERSION="$(git describe --tags --exact-match HEAD)" \
+            || { echo "::error::updateVersion skapade ingen tagg på HEAD"; exit 1; }
+          echo "Version: $VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build and stage
+        run: ./gradlew release
+
+      - name: Package staging
+        run: |
+          [ -d "$STAGING_DIR" ] || { echo "::error::Ingen staging skapades"; exit 1; }
+          tar -czf "$STAGING_ARCHIVE" -C "$STAGING_DIR" .
+          echo "$VERSION" > "$VERSION_FILE"
+          echo "Innehåll i staging:"
+          tar -tzf "$STAGING_ARCHIVE"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maven-staging
+          path: |
+            ${{ env.STAGING_ARCHIVE }}
+            ${{ env.VERSION_FILE }}
+          if-no-files-found: error
+          retention-days: 7

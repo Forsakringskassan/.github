@@ -4,12 +4,12 @@ on: [workflow_call]
 
 jobs:
   call-npm-ci:
-    uses: Forsakringskassan/.github/.github/workflows/npm-ci.yaml@main
+    uses: $/.github/workflows/npm-ci.yaml
   call-npm-ghpages-docs:
-    uses: Forsakringskassan/.github/.github/workflows/npm-ghpages-docs.yaml@main
+    uses: $/.github/workflows/npm-ghpages-docs.yaml
   call-npm-lint:
-    uses: Forsakringskassan/.github/.github/workflows/npm-lint.yaml@main
+    uses: $/.github/workflows/npm-lint.yaml
   call-pr-preview:
-    uses: Forsakringskassan/.github/.github/workflows/npm-pr-preview.yaml@main
+    uses: $/.github/workflows/npm-pr-preview.yaml
   call-pnr-scan:
-    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main
+    uses: $/.github/workflows/pnr-scanner.yaml

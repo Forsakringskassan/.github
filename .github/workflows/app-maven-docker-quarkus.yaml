@@ -14,16 +14,21 @@ on:
         required: true
         type: string
     secrets:
+      # Används inte längre. Kvar som valfria tills anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   build-and-push-docker:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     env:
       ARCHS: "amd64 arm64"
+      BUILDX_NO_DEFAULT_ATTESTATIONS: 1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -39,9 +44,6 @@ jobs:
           java-version: 25.0.5+8.0.LTS
           distribution: "temurin"
           cache: maven
-          server-id: github--Forsakringskassan--repository
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
 
       - name: Create Maven settings.xml
         run: |
@@ -69,16 +71,18 @@ jobs:
           echo "name=$ARTIFACT_ID" >> $GITHUB_OUTPUT
           echo "📦 Artifact ID: $ARTIFACT_ID"
         env:
-          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Build project
         run: |
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C versions:set -DnewVersion=${{ inputs.version }}
-          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C clean package -DskipTests
+          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C \
+            versions:set -DnewVersion=${{ inputs.version }}
+          ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C \
+            clean package -DskipTests
         env:
-          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Prepare Docker context
         run: |
@@ -144,7 +148,7 @@ jobs:
               --build-arg GIT_COMMIT=$GIT_COMMIT \
               --build-arg IMAGE_NAME=$IMAGE_BASE \
               --build-arg BUILD_DATE="$BUILD_DATE" \
-              --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+              --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
               --label "org.opencontainers.image.description=Quarkus application: ${{ steps.artifact.outputs.name }}" \
               --label "org.opencontainers.image.licenses=MIT" \
               -t "$IMAGE_BASE:$ARCH-snapshot" \
@@ -159,7 +163,7 @@ jobs:
                 --build-arg GIT_COMMIT=$GIT_COMMIT \
                 --build-arg IMAGE_NAME=$IMAGE_BASE \
                 --build-arg BUILD_DATE="$BUILD_DATE" \
-                --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+                --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
                 --label "org.opencontainers.image.description=Quarkus application: ${{ steps.artifact.outputs.name }}" \
                 --label "org.opencontainers.image.licenses=MIT" \
                 -t "$IMAGE_BASE:$ARCH-$NEXT_VERSION" \
@@ -169,8 +173,6 @@ jobs:
               docker push "$IMAGE_BASE:$ARCH-latest"
             fi
           done
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Create and push multi-arch manifests
         run: |
@@ -192,5 +194,3 @@ jobs:
             docker manifest annotate "$IMAGE_BASE:snapshot" "$IMAGE_BASE:$ARCH-snapshot" --arch $ARCH --os linux
           done
           docker manifest push "$IMAGE_BASE:snapshot"
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}

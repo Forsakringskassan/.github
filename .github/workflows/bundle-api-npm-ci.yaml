@@ -10,14 +10,14 @@ on:
 
 jobs:
   call-gradle-ci:
-    uses: Forsakringskassan/.github/.github/workflows/gradle-ci.yaml@main
+    uses: $/.github/workflows/gradle-ci.yaml
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
   call-api-npm-ci:
-    uses: Forsakringskassan/.github/.github/workflows/api-npm-ci.yaml@main
+    uses: $/.github/workflows/api-npm-ci.yaml
     secrets:
       PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
       PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
   call-pnr-scan:
-    uses: Forsakringskassan/.github/.github/workflows/pnr-scanner.yaml@main
+    uses: $/.github/workflows/pnr-scanner.yaml

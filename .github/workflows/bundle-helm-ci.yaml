@@ -16,7 +16,7 @@ on:
 
 jobs:
   call-helm-ci:
-    uses: Forsakringskassan/.github/.github/workflows/helm-ci.yaml@main
+    uses: $/.github/workflows/helm-ci.yaml
     with:
       helm-version: ${{ inputs.helm-version }}
       chart-path: ${{ inputs.chart-path }}
