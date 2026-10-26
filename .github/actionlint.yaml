@@ -1,0 +1,9 @@
+# Konfiguration för actionlint. Läses automatiskt, både lokalt och i workflowet.
+
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      # Tillfälligt: actionlint känner ännu inte till $/-syntaxen
+      # (self repository reference). Ta bort när rättningen är släppt.
+      # Issue: https://github.com/rhysd/actionlint/issues/711
+      - 'reusable workflow call "\$/'
