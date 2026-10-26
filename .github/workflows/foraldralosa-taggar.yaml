@@ -1,0 +1,52 @@
+name: Föräldralösa taggar
+
+# Kör scripts/foraldralosa-taggar.sh
+# Läser bara publika repon. Sammanfattningen visas på körningens sida och
+# underlaget sparas som artefakter med begränsad livslängd.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag-filter:
+        description: "Regex på reponamn för kontrollen av föräldralösa taggar"
+        required: true
+        default: 'rimfrost'
+  schedule:
+    - cron: "0 6 * * 1"   # måndagar 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  orphan-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check API limit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/api-grans.sh 300
+
+      - name: Find orphan tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILTER: ${{ inputs.tag-filter || 'rimfrost' }}
+        run: |
+          OUT=taggkontroll bash scripts/foraldralosa-taggar.sh "$FILTER"
+          cat taggkontroll/atgardslista.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: API usage after run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/api-grans.sh
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: taggkontroll
+          path: taggkontroll
+          retention-days: 7
