@@ -28,6 +28,7 @@ jobs:
       packages: write
     env:
       ARCHS: "amd64 arm64"
+      BUILDX_NO_DEFAULT_ATTESTATIONS: 1
 
     steps:
       - name: Checkout repository
