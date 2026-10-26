@@ -3,10 +3,11 @@ name: Bundle Maven Quarkus Release
 on:
   workflow_call:
     secrets:
+      # Används inte längre. Kvar som valfria tills anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   call-app-generic-conventional-release:
@@ -24,9 +25,6 @@ jobs:
     with:
       release: true
       version: ${{ needs.call-app-generic-conventional-release.outputs.current-version }}
-    secrets:
-      PACKAGES_RW_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-      PACKAGES_RW_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
   publish-release:
     if: |
