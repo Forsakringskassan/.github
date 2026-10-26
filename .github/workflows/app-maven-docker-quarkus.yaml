@@ -14,10 +14,11 @@ on:
         required: true
         type: string
     secrets:
+      # Används inte längre. Kvar som valfria tills anropare slutat skicka dem.
       PACKAGES_RW_ACTOR:
-        required: true
+        required: false
       PACKAGES_RW_TOKEN:
-        required: true
+        required: false
 
 jobs:
   build-and-push-docker:
@@ -69,16 +70,16 @@ jobs:
           echo "name=$ARTIFACT_ID" >> $GITHUB_OUTPUT
           echo "📦 Artifact ID: $ARTIFACT_ID"
         env:
-          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Build project
         run: |
           ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C versions:set -DnewVersion=${{ inputs.version }}
           ./mvnw -s $RUNNER_TEMP/maven/settings.xml -ntp -T 1C clean package -DskipTests
         env:
-          GITHUB_ACTOR: ${{ secrets.PACKAGES_RW_ACTOR }}
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Prepare Docker context
         run: |
@@ -169,8 +170,6 @@ jobs:
               docker push "$IMAGE_BASE:$ARCH-latest"
             fi
           done
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
 
       - name: Create and push multi-arch manifests
         run: |
@@ -192,5 +191,3 @@ jobs:
             docker manifest annotate "$IMAGE_BASE:snapshot" "$IMAGE_BASE:$ARCH-snapshot" --arch $ARCH --os linux
           done
           docker manifest push "$IMAGE_BASE:snapshot"
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_RW_TOKEN }}
