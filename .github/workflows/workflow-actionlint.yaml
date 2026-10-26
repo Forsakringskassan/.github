@@ -1,0 +1,86 @@
+name: actionlint
+
+# Kontrollerar workflow-filer med actionlint, och run-blocken med shellcheck.
+#
+# På en PR:
+#   - ändrade workflow-filer kontrolleras strikt, och fel fäller kontrollen,
+#   - övriga workflow-filer kontrolleras för information, och fel visas som
+#     varningar utan att fälla kontrollen.
+# Vid push till main och vid manuell start kontrolleras alla filer strikt.
+#
+# Undantag (t.ex. för $/-syntaxen) finns i .github/actionlint.yaml.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/actionlint.yaml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/actionlint.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: actionlint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    env:
+      # Låst version. Uppdatera medvetet, t.ex. via Renovate.
+      ACTIONLINT_VERSION: "1.7.7"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install actionlint
+        run: |
+          go version
+          shellcheck --version
+          GOBIN="$RUNNER_TEMP/bin" go install "github.com/rhysd/actionlint/cmd/actionlint@v${ACTIONLINT_VERSION}"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Select files
+        run: |
+          find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) | sort > "$RUNNER_TEMP/all.txt"
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            git diff --name-only --diff-filter=ACMR "origin/$GITHUB_BASE_REF...HEAD" \
+              -- '.github/workflows/*.yml' '.github/workflows/*.yaml' | sort > "$RUNNER_TEMP/strict.txt"
+          else
+            cp "$RUNNER_TEMP/all.txt" "$RUNNER_TEMP/strict.txt"
+          fi
+          comm -23 "$RUNNER_TEMP/all.txt" "$RUNNER_TEMP/strict.txt" > "$RUNNER_TEMP/info.txt"
+          echo "Kontrolleras strikt:";          sed 's/^/  /' "$RUNNER_TEMP/strict.txt"
+          echo "Kontrolleras för information:"; sed 's/^/  /' "$RUNNER_TEMP/info.txt"
+
+      - name: actionlint (strikt)
+        run: |
+          mapfile -t files < "$RUNNER_TEMP/strict.txt"
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "Inga filer att kontrollera strikt"
+            exit 0
+          fi
+          # $err är en variabel i actionlints Go-mall, inte i skalet, och ska inte expanderas.
+          # shellcheck disable=SC2016
+          actionlint -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}\n{{end}}' "${files[@]}"
+
+      - name: actionlint (information)
+        if: always()
+        run: |
+          mapfile -t files < "$RUNNER_TEMP/info.txt"
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "Inga övriga filer att kontrollera"
+            exit 0
+          fi
+          # $err är en variabel i actionlints Go-mall, inte i skalet, och ska inte expanderas.
+          # shellcheck disable=SC2016
+          actionlint -format '{{range $err := .}}::warning file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}\n{{end}}' "${files[@]}" \
+            || echo "actionlint hittade fel i filer som inte ändras i denna PR. De visas som varningar och fäller inte kontrollen."
