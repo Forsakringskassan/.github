@@ -2,6 +2,15 @@ name: Publish release on tag push
 
 on:
   workflow_call:
+    inputs:
+      version:
+        description: >-
+          Versionen (taggen) att skapa release för. Skicka med den när anroparen
+          vet den, t.ex. från generic-conventional-release. Utan den används
+          versionen i Maven-stagingen, annars högsta versionstaggen.
+        required: false
+        type: string
+        default: ''
 
 jobs:
   publish-github-release-from-latest-tag:
@@ -14,10 +23,10 @@ jobs:
           ref: ${{ github.ref_name }}
           fetch-tags: "true"
           fetch-depth: "0"
+          persist-credentials: false
 
-      # Workflowet används även av appar. Med pattern i stället för name ger en
-      # saknad artefakt inget fel, medan andra fel (t.ex. fel version av
-      # actionen) fortfarande stoppar jobbet.
+      # Workflowet används även av appar och tjänster. Med pattern i stället för
+      # name ger en saknad artefakt inget fel, medan andra fel stoppar jobbet.
       - name: Fetch Maven staging
         uses: actions/download-artifact@v8
         with:
@@ -28,24 +37,32 @@ jobs:
       - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [ -f "$RUNNER_TEMP/maven-staging/release-version.txt" ]; then
             HAS_STAGING=true
-          else
-            HAS_STAGING=false
-          fi
-
-          if [ "$HAS_STAGING" = "true" ]; then
-            TAG="$(cat "$RUNNER_TEMP/maven-staging/release-version.txt")"
             ASSETS=("$RUNNER_TEMP/maven-staging/maven-staging.tar.gz")
           else
-            TAG="$(git tag --sort=-v:refname | head -n 1)"
+            HAS_STAGING=false
             ASSETS=()
           fi
-          [ -n "$TAG" ] || { echo "::error::Hittade ingen tagg"; exit 1; }
+
+          # Versionen i turordning: input, Maven-staging, högsta versionstagg.
+          if [ -n "$INPUT_VERSION" ]; then
+            TAG="$INPUT_VERSION"
+          elif [ "$HAS_STAGING" = "true" ]; then
+            TAG="$(cat "$RUNNER_TEMP/maven-staging/release-version.txt")"
+          else
+            # Sortera på versionsnumret utan ledande "v", men behåll taggens namn.
+            TAG="$(git tag --list | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
+              | awk '{ v = $0; sub(/^v/, "", v); print v "\t" $0 }' \
+              | sort -t $'\t' -k1,1V | tail -n 1 | cut -f2)"
+          fi
+          [ -n "$TAG" ] || { echo "::error::Hittade ingen version att skapa release för"; exit 1; }
+          echo "Release för $TAG"
 
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $TAG finns redan, uppdaterar tillgångar"
+            echo "Releasen $TAG finns redan, uppdaterar tillgångar"
             if [ ${#ASSETS[@]} -gt 0 ]; then
               gh release upload "$TAG" "${ASSETS[@]}" -R "$GITHUB_REPOSITORY" --clobber
             fi
