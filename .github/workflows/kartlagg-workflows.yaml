@@ -1,0 +1,57 @@
+name: Kartlägg workflows
+
+# Kör scripts/kartlagg-workflows.sh
+# Läser bara publika repon. Sammanfattningen visas på körningens sida och
+# underlaget sparas som artefakter med begränsad livslängd.
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow-filter:
+        description: "Regex på reponamn för kartläggningen av workflows"
+        required: true
+        default: '.'
+  schedule:
+    - cron: "0 5 * * 1"   # måndagar 05:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check API limit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/api-grans.sh 800
+
+      - name: Map workflow usage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILTER: ${{ inputs.workflow-filter || '.' }}
+        run: |
+          OUT=workflow-analys bash scripts/kartlagg-workflows.sh "$FILTER"
+          {
+            echo '## Kartläggning av workflows'
+            echo '```'
+            cat workflow-analys/sammanfattning.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: API usage after run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/api-grans.sh
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: workflow-analys
+          path: workflow-analys
+          retention-days: 7
