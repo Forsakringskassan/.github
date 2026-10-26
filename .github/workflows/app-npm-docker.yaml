@@ -131,7 +131,7 @@ jobs:
               --build-arg GIT_COMMIT=$GIT_COMMIT \
               --build-arg IMAGE_NAME=$IMAGE_BASE \
               --build-arg BUILD_DATE="$BUILD_DATE" \
-              --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+              --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
               --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
               --label "org.opencontainers.image.licenses=MIT" \
               -t "$IMAGE_BASE:$ARCH-snapshot" \
@@ -145,7 +145,7 @@ jobs:
                 --build-arg GIT_COMMIT=$GIT_COMMIT \
                 --build-arg IMAGE_NAME=$IMAGE_BASE \
                 --build-arg BUILD_DATE="$BUILD_DATE" \
-                --label "org.opencontainers.image.source=https://github.com/Forsakringskassan/repository" \
+                --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
                 --label "org.opencontainers.image.description=NPM application: ${{ steps.pkg.outputs.name }}" \
                 --label "org.opencontainers.image.licenses=MIT" \
                 -t "$IMAGE_BASE:$ARCH-$NEXT_VERSION" \
