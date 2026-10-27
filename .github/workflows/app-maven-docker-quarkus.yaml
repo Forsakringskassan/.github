@@ -176,6 +176,8 @@ jobs:
 
       - name: Create and push multi-arch manifests
         run: |
+          # Listan med images ska delas upp i ett argument per image.
+          # shellcheck disable=SC2046
           if [ "${{ inputs.release }}" = "true" ]; then
             # Release manifests
             docker manifest create "$IMAGE_BASE:latest" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-${{ inputs.version }} "; done)
@@ -189,6 +191,7 @@ jobs:
           fi
           
           # Snapshot manifest
+          # shellcheck disable=SC2046
           docker manifest create "$IMAGE_BASE:snapshot" $(for ARCH in $ARCHS; do echo -n "$IMAGE_BASE:$ARCH-snapshot "; done)
           for ARCH in $ARCHS; do
             docker manifest annotate "$IMAGE_BASE:snapshot" "$IMAGE_BASE:$ARCH-snapshot" --arch $ARCH --os linux
