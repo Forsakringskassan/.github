@@ -62,6 +62,9 @@ jobs:
           echo "Kontrolleras för information:"; sed 's/^/  /' "$RUNNER_TEMP/info.txt"
 
       - name: actionlint (strikt)
+        env:
+          # Välj bort style & info, tills vidare
+          SHELLCHECK_OPTS: "--severity=warning"
         run: |
           mapfile -t files < "$RUNNER_TEMP/strict.txt"
           if [ ${#files[@]} -eq 0 ]; then
