@@ -103,7 +103,7 @@ jobs:
                   break
                 fi
 
-                while IFS=$'\t' read -r VERSION_ID VERSION_URL; do
+                while IFS=$'\t' read -r VERSION_ID _; do
                   echo "  Found untagged version ID: $VERSION_ID"
 
                   if [ "${DRY_RUN:-true}" = "false" ]; then
