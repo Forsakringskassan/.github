@@ -7,3 +7,8 @@ paths:
       # (self repository reference). Ta bort när rättningen är släppt.
       # Issue: https://github.com/rhysd/actionlint/issues/711
       - 'reusable workflow call "\$/'
+  .github/workflows/bundle-app-npm-release.yaml:
+    ignore:
+      # Kända fel, rättas i samråd med teamen: https://github.com/Forsakringskassan/.github/issues/73
+      - 'is always evaluated to true'
+      - 'property "call-app-generic-conventional-release" is not defined'
