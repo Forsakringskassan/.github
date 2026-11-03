@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Låst version. Uppdatera medvetet, t.ex. via Renovate.
-      ACTIONLINT_VERSION: "1.7.7"
+      ACTIONLINT_VERSION: "1.7.12"
     steps:
       - uses: actions/checkout@v7
         with:
