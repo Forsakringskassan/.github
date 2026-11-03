@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Låst version. Uppdatera medvetet, t.ex. via Renovate.
-      ACTIONLINT_VERSION: "1.7.12"
+      ACTIONLINT_VERSION: "1.17.0"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,7 +45,7 @@ jobs:
         run: |
           go version
           shellcheck --version
-          GOBIN="$RUNNER_TEMP/bin" go install "github.com/rhysd/actionlint/cmd/actionlint@v${ACTIONLINT_VERSION}"
+          GOBIN="$RUNNER_TEMP/bin" go install "actionlint.kjanat.dev/cmd/actionlint@v${ACTIONLINT_VERSION}"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Select files
