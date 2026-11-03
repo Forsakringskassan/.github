@@ -17,6 +17,3 @@ jobs:
       - uses: kjanat/actionlint@v1
         with:
           plugin-cache: false
-        env:
-          # Välj bort style & info, tills vidare
-          SHELLCHECK_OPTS: "--severity=warning"
